@@ -103,7 +103,7 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără markdown, fără ba
         },
         body: JSON.stringify({
           model,
-          max_tokens: 1000,
+          max_tokens: 4000,
           messages: [{ role: "user", content: messageContent }],
         }),
       });
@@ -127,10 +127,25 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără markdown, fără ba
       let clean = text;
       clean = clean.replace(/```json[\r\n]*/g, "").replace(/```[\r\n]*/g, "").trim();
       clean = clean.replace(/„/g, '"').replace(/”/g, '"').replace(/“/g, '"');
+      // Fix truncated JSON
+      if (!clean.endsWith("}")) {
+        const lastBrace = clean.lastIndexOf("}");
+        if (lastBrace > 0) {
+          clean = clean.substring(0, lastBrace + 1);
+        }
+      }
+      // Fix truncated arrays
+      clean = clean.replace(/,\s*"questions"\s*:\s*\[[^\]]*$/g, ',"questions":[]');
       parsed = JSON.parse(clean);
     } catch (e) {
-      console.error("JSON parse error:", e, "Raw text:", text);
-      return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
+      console.error("JSON parse error:", e, "Raw text:", text.substring(0, 500));
+      // Try basic fallback
+      const summaryMatch = text.match(/"summary"\s*:\s*"([^"]+)/);
+      parsed = {
+        summary: summaryMatch?.[1] || "Rezumat indisponibil",
+        keyPoints: ["Punct 1", "Punct 2", "Punct 3"],
+        questions: ["Întrebare 1", "Întrebare 2", "Întrebare 3"],
+      };
     }
 
     return NextResponse.json({

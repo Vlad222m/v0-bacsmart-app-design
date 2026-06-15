@@ -100,7 +100,7 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
         },
         body: JSON.stringify({
           model,
-          max_tokens: 1500,
+          max_tokens: 4000,
           messages: [
             { role: "user", content: messageContent },
           ],
@@ -128,14 +128,59 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
     let questions;
     try {
       const clean = text.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(clean);
+      // Try to fix truncated JSON - find last complete question object
+      let cleanJson = clean;
+      // Remove trailing incomplete content after the last complete question
+      const lastCloseBrace = cleanJson.lastIndexOf("}");
+      if (lastCloseBrace > 0) {
+        const lastArrayClose = cleanJson.lastIndexOf("]");
+        if (lastArrayClose < 0 || lastArrayClose < lastCloseBrace) {
+          // The JSON is truncated mid-array - append closing bracket
+          cleanJson = cleanJson.substring(0, lastCloseBrace + 1) + "]";
+        }
+        // Reconstruct full JSON object
+        const questionsStart = cleanJson.indexOf('"questions"');
+        if (questionsStart >= 0) {
+          cleanJson = cleanJson.substring(questionsStart - 1);
+          cleanJson = "{" + cleanJson;
+          // Fix if the outer object is also truncated
+          if (!cleanJson.endsWith("}")) {
+            cleanJson = cleanJson.substring(0, cleanJson.lastIndexOf("}") + 1);
+          }
+        }
+      }
+      const parsed = JSON.parse(cleanJson);
       questions = parsed.questions;
     } catch (e) {
-      console.error("JSON parse error:", e, "Raw text:", text);
-      return NextResponse.json(
-        { error: "Failed to parse AI response" },
-        { status: 500 }
-      );
+      console.error("JSON parse error:", e, "Raw text:", text.substring(0, 500));
+      // If we have at least some questions in the raw text, try to extract manually
+      try {
+        const matches = text.match(/\{\s*"question"\s*:\s*"([^"]*)"[^}]*\}/g);
+        if (matches && matches.length > 0) {
+          questions = matches.map((q: string, i: number) => {
+            const qMatch = q.match(/"question"\s*:\s*"([^"]*)"/);
+            const aMatch = q.match(/"A"\s*:\s*"([^"]*)"/);
+            const bMatch = q.match(/"B"\s*:\s*"([^"]*)"/);
+            const cMatch = q.match(/"C"\s*:\s*"([^"]*)"/);
+            const dMatch = q.match(/"D"\s*:\s*"([^"]*)"/);
+            const correctMatch = q.match(/"correct"\s*:\s*"([^"]*)"/);
+            const expMatch = q.match(/"explanation"\s*:\s*"([^"]*)"/);
+            if (!qMatch) return null;
+            return {
+              question: qMatch[1],
+              options: { A: aMatch?.[1] || "", B: bMatch?.[1] || "", C: cMatch?.[1] || "", D: dMatch?.[1] || "" },
+              correct: correctMatch?.[1] || "A",
+              explanation: expMatch?.[1] || "",
+            };
+          }).filter(Boolean);
+        }
+        if (!questions || questions.length === 0) throw e;
+      } catch (e2) {
+        return NextResponse.json(
+          { error: "AI response could not be parsed" },
+          { status: 500 }
+        );
+      }
     }
 
     // Format questions to match app format (UI expects `answers` array + numeric `correct` index)
