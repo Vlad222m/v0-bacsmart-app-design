@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const maxDuration = 60;
-const MAX_TEXT_INPUT = 8000; // Limita de text trimis la API - suficient + eficient
+const MAX_TEXT_INPUT = 24000; // Limita de text trimis la API
 
 async function extractText(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();

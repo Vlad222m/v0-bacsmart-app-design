@@ -3,6 +3,13 @@
 import { useState, useRef } from "react";
 import { ArrowLeft, Upload, Loader } from "lucide-react";
 
+const SUPPORTED_FORMATS = [
+  { ext: "JPG/PNG/WebP", note: "Text extras prin OCR (max 24.000 caractere)" },
+  { ext: "PDF", note: "Text extras din document" },
+  { ext: "DOC/DOCX", note: "Text extras din document" },
+  { ext: "TXT", note: "Text direct" },
+];
+
 interface DocumentQuizUploadScreenProps {
   onBack: () => void;
   onFileSelected: (file: File) => void;
@@ -81,6 +88,19 @@ export default function DocumentQuizUploadScreen({
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Format info badges */}
+        <div className="mb-4">
+          <p className="text-xs text-muted-foreground mb-2">Formate acceptate:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {SUPPORTED_FORMATS.map((f) => (
+              <span key={f.ext} className="text-[10px] bg-card border border-border px-2 py-0.5 rounded-full text-muted-foreground" title={f.note}>
+                {f.ext}
+              </span>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">Limita: 10MB / ~24.000 caractere extrase</p>
         </div>
 
         {!isGenerating && (
