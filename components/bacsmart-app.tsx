@@ -344,7 +344,11 @@ export default function BACsmartApp() {
     showToastMessage("Rezumat sters");
   };
 
-  const navigateToTests = (subjectName: string) => { setTestSubjectFilter(subjectName); setActiveTab("tests"); };
+  const navigateToTests = (subjectOrName: Subject | string) => {
+    const subjectName = typeof subjectOrName === "string" ? subjectOrName : subjectOrName.name;
+    setTestSubjectFilter(subjectName);
+    setActiveTab("tests");
+  };
 
   const handleResetProgress = async () => {
     setSubjectsState(subjectsState.map((s) => ({ ...s, progress: 0 })));
@@ -634,7 +638,7 @@ export default function BACsmartApp() {
               <HomeTab
                 subjectsState={subjectsState} subjectScores={subjectScores}
                 userProfile={userProfile}
-                onSubjectClick={navigateToChat} onPremiumClick={() => setActiveTab("premium")}
+                onSubjectClick={navigateToTests} onPremiumClick={() => setActiveTab("premium")}
                 showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu}
                 currentPlan={currentPlan}
                 onProfileClick={() => { setShowProfileMenu(false); setShowProfileScreen(true); }}

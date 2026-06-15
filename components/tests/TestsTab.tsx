@@ -86,11 +86,12 @@ export default function TestsTab({
           <button
             key={subject.name}
             onClick={() => setTestSubjectFilter(subject.name)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium shrink-0 transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium shrink-0 transition-all flex items-center gap-1.5 ${
               testSubjectFilter === subject.name ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground"
             }`}
           >
-            {subject.icon}
+            <span className="text-base">{subject.icon}</span>
+            <span className="text-[10px] truncate max-w-[60px]">{subject.name}</span>
           </button>
         ))}
       </div>
