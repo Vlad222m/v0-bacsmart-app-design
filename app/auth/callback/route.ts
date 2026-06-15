@@ -53,6 +53,6 @@ export async function GET(request: NextRequest) {
   }
 
   // Success - redirect to home (app will show dashboard for logged in users)
-  console.log("[v0] OAuth success, user:", data.user?.email);
+  console.log("[v0] OAuth success for user");
   return NextResponse.redirect(origin);
 }

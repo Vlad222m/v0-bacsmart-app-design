@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/api-auth";
 
 const MAX_TEXT_INPUT = 30000; // Limita de text trimis la API
 
@@ -56,6 +57,10 @@ async function extractText(file: File): Promise<string> {
 
 export async function POST(req: Request) {
   try {
+    // Verify authentication
+    const auth = await requireAuth(req);
+    if (auth instanceof NextResponse) return auth;
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const difficulty = (formData.get("difficulty") as string) || "medium";

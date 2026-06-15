@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/api-auth";
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
+    // Verify authentication
+    const auth = await requireAuth(req);
+    if (auth instanceof NextResponse) return auth;
+
     const { subject, messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {

@@ -3,24 +3,21 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Home, MessageCircle, FileText, TrendingUp, Crown,
-  Send, ChevronRight, Check, X, Zap, Flame, BookOpen,
-  User, Settings, LogOut, Camera, Upload, Save, Share2,
-  Bell, HelpCircle, ArrowLeft, Palette, BarChart3, Trash2,
-  ChevronDown, Search, Mail, Clock, RefreshCw, Play, Target,
-  Calendar, RotateCcw, Image, AlertTriangle, Plus, Loader, Eye, EyeOff,
+  Send, ChevronRight, Check, X, User, Settings, LogOut,
+  Upload, Save, ArrowLeft, Trash2, RefreshCw, AlertTriangle,
+  HelpCircle, Camera,
 } from "lucide-react";
 
 import { getAllQuestions, correctToIndex } from "@/data/bac-questions";
 import {
-  supabase, signUpWithEmail, signInWithEmail, signInWithGoogle,
-  signOut, getOrCreateProfile, saveChatMessage, getChatHistory,
+  supabase, getOrCreateProfile, saveChatMessage, getChatHistory,
   saveTestScore, getAggregatedScores, saveSubjectProgress,
   getSubjectProgress, saveSummary as saveSummaryToDb,
   getSummaries, deleteSummary as deleteSummaryFromDb,
-  saveQuiz, getQuizzes, deleteQuiz, saveBacPreferences, type UserProfile, type SavedQuiz,
+  saveQuiz, getQuizzes, deleteQuiz, saveBacPreferences,
+  resetUserProgress, type UserProfile, type SavedQuiz,
 } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
-import type { User } from "@supabase/supabase-js";
 
 import type { Tab, Message, Subject, GeneratedSummaryData, SubjectScores, NotificationItem } from "@/components/types";
 import HomeTab from "@/components/home/HomeTab";
@@ -112,7 +109,6 @@ export default function BACsmartApp() {
   const [docQuizDifficulty, setDocQuizDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([]);
   const [showSavedQuizList, setShowSavedQuizList] = useState(false);
-  const [redoingQuizId, setRedoingQuizId] = useState<string | null>(null);
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -248,6 +244,14 @@ export default function BACsmartApp() {
 
   useEffect(() => { if (currentQuestionIndex === null) selectNextQuestion(); }, []);
   useEffect(() => { if (showToast) { const t = setTimeout(() => setShowToast(false), 3000); return () => clearTimeout(t); } }, [showToast]);
+
+  // Scroll lock when any modal is open
+  const modalsOpen = showPremiumModal || showProfileScreen || showSettingsScreen || showHelpScreen || showNotificationsScreen || showAuthScreen || showSavedQuizList || showDocumentQuizUpload || showSuccessScreen || (generatedQuizQuestions.length > 0);
+  useEffect(() => {
+    if (modalsOpen) { document.body.style.overflow = "hidden"; }
+    else { document.body.style.overflow = ""; }
+    return () => { document.body.style.overflow = ""; };
+  }, [modalsOpen]);
 
   const showToastMessage = (message: string) => { setToastMessage(message); setShowToast(true); };
 
