@@ -19,10 +19,12 @@ const QUICK_QUESTIONS: Record<string, string[]> = {
   "Matematică": ["Explica derivata", "Ce este o integrala?", "Teorema lui Pitagora", "Exercitiu limita"],
   "Română": ["Figuri de stil", "Mihai Eminescu", "Structura unui eseu", "Literatura interbelica"],
   "Istorie": ["Marea Unire 1918", "Primul Razboi Mondial", "Regimul comunist", "Evul Mediu Romanesc"],
+  "Geografie": ["Ce este delta?", "Carpatii Romaniei", "Clima Romaniei", "Unitati de relief"],
   "Biologie": ["Sistemul digestiv", "Fotosinteza", "ADN-ul", "Ecosisteme"],
   "Fizică": ["Legile lui Newton", "Curentul electric", "Undele si sunetul", "Energia mecanica"],
   "Chimie": ["Tabelul periodic", "Legaturi chimice", "Reactii chimice", "PH-ul"],
   "Informatică": ["Structuri de date", "Algoritmi", "Programare C++", "Baze de date"],
+  "Logică": ["Silogismul", "Operatii logice", "Erori de rationament", "Modus ponens"],
 };
 
 export default function ChatTab({

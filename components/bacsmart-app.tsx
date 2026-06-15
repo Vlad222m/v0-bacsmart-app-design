@@ -41,10 +41,12 @@ const subjects: Subject[] = [
   { name: "Matematică", icon: "∑", progress: 73, color: "#FF6B35" },
   { name: "Română", icon: "Ă", progress: 65, color: "#4ECDC4" },
   { name: "Istorie", icon: "⚔", progress: 58, color: "#A855F7" },
+  { name: "Geografie", icon: "🌍", progress: 30, color: "#10B981" },
   { name: "Biologie", icon: "🧬", progress: 42, color: "#22C55E" },
   { name: "Fizică", icon: "⚡", progress: 51, color: "#F59E0B" },
   { name: "Chimie", icon: "⚗", progress: 38, color: "#3B82F6" },
   { name: "Informatică", icon: "</>", progress: 81, color: "#EC4899" },
+  { name: "Logică", icon: "🧠", progress: 20, color: "#8B5CF6" },
 ];
 
 const allTestQuestions = getAllQuestions().map((q) => ({
