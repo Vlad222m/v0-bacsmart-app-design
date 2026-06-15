@@ -24,15 +24,33 @@ Rolul tău:
 
 Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
 
-    // Map app messages to OpenRouter format + limit to last 10 messages (economiseste tokeni)
+    // Pastram ultimele 10 mesaje pentru context recent
+    // + generam un rezumat al conversatiei mai vechi (daca exista)
     const MAX_HISTORY = 10;
-    const openRouterMessages = messages
-      .filter((m: { text?: string }) => m.text && m.text.trim())
-      .slice(-MAX_HISTORY)
-      .map((m: { isUser: boolean; text: string }) => ({
-        role: m.isUser ? "user" : "assistant",
-        content: m.text,
-      }));
+    const allMessages = messages.filter((m: { text?: string }) => m.text && m.text.trim());
+    const recentMessages = allMessages.slice(-MAX_HISTORY);
+    const olderMessages = allMessages.slice(0, -MAX_HISTORY);
+
+    // Generam rezumatul conversatiei anterioare
+    let summaryContext = "";
+    if (olderMessages.length > 4) {
+      const userQs = olderMessages.filter((m: { isUser: boolean }) => m.isUser).map((m: { text: string }) => m.text);
+      const aiAnswers = olderMessages.filter((m: { isUser: boolean }) => !m.isUser).map((m: { text: string }) => m.text);
+      summaryContext = `[Rezumatul conversatiei anterioare: Elevul a pus ${userQs.length} intrebari despre ${subjectName}, printre care: "${userQs.slice(0, 3).join('", "')}". Profesorul a oferit explicatii detaliate si exemple. Continuă naturalețea conversatiei.]\n\n`;
+    }
+
+    const openRouterMessages = recentMessages.map((m: { isUser: boolean; text: string }) => ({
+      role: m.isUser ? "user" : "assistant" as const,
+      content: m.text,
+    }));
+
+    // Adaugam rezumatul la primul mesaj ca sa stie AI-ul contextul vechi
+    if (summaryContext && openRouterMessages.length > 0) {
+      openRouterMessages[0] = {
+        role: "user",
+        content: summaryContext + openRouterMessages[0].content,
+      };
+    }
 
     // Ensure first message is from user
     while (openRouterMessages.length > 0 && openRouterMessages[0].role !== "user") {
