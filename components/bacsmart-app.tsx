@@ -314,11 +314,17 @@ export default function BACsmartApp() {
     setShowResult(true);
     const question = allTestQuestions[currentQuestionIndex];
     const isCorrect = selectedAnswer === question.correct;
-    setSubjectScores((prev) => ({
-      ...prev,
-      [question.subject]: { correct: (prev[question.subject]?.correct || 0) + (isCorrect ? 1 : 0), total: (prev[question.subject]?.total || 0) + 1 },
-    }));
+    const updatedScores = {
+      ...subjectScores,
+      [question.subject]: { correct: (subjectScores[question.subject]?.correct || 0) + (isCorrect ? 1 : 0), total: (subjectScores[question.subject]?.total || 0) + 1 },
+    };
+    setSubjectScores(updatedScores);
     if (authUser) { try { await saveTestScore(authUser.id, question.subject, isCorrect ? 1 : 0, 1); } catch (error) { console.error("Error saving test score:", error); } }
+    // Update progress bar based on actual accuracy
+    const subjScore = updatedScores[question.subject];
+    const newProgress = subjScore.total > 0 ? Math.round((subjScore.correct / subjScore.total) * 100) : 0;
+    setSubjectsState((prev) => prev.map((s) => s.name === question.subject ? { ...s, progress: newProgress } : s));
+    if (authUser) { try { await saveSubjectProgress(authUser.id, question.subject, newProgress); } catch (error) { console.error("Error saving progress:", error); } }
   };
 
   const nextQuestion = () => {
