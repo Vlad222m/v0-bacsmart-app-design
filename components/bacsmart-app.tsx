@@ -607,14 +607,14 @@ export default function BACsmartApp() {
           onBack={() => setShowSettingsScreen(false)} showToastMessage={showToastMessage}
           userBacProfile={userBacProfile}
           activeSubjects={activeSubjects}
-          onBacProfileChange={(bacProfile, subjects) => {
+          onBacProfileChange={(bacProfile, selectedSubjects) => {
             setUserBacProfile(bacProfile);
-            setActiveSubjects(subjects);
+            setActiveSubjects(selectedSubjects);
             if (authUser) {
-              saveBacPreferences(authUser.id, bacProfile, subjects).catch(console.error);
+              saveBacPreferences(authUser.id, bacProfile, selectedSubjects).catch(console.error);
             }
-            // Update subjectsState to reflect new selection
-            setSubjectsState(subjectsState.filter((s) => subjects.includes(s.name)));
+            // Update subjectsState from the FULL subjects list (not subjectsState which may already be filtered)
+            setSubjectsState(subjects.filter((s) => selectedSubjects.includes(s.name)));
           }}
           onResetBacProfile={() => {
             setUserBacProfile(null);
