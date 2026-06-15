@@ -41,31 +41,47 @@ Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
       return NextResponse.json({ error: "No valid user message" }, { status: 400 });
     }
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY!}`,
-        "HTTP-Referer": "https://bacsmart.ro",
-        "X-Title": "BACsmart",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-preview-04-17",
-        max_tokens: 1000,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...openRouterMessages,
-        ],
-      }),
-    });
+    const MODELS = [
+      "google/gemini-2.5-flash-001",
+      "openai/gpt-4o-mini",
+      "google/gemini-2.0-flash-001",
+    ];
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("OpenRouter API error:", error);
-      return NextResponse.json({ error: "AI API error" }, { status: 500 });
+    let lastError = "";
+    let data: any = null;
+
+    for (const model of MODELS) {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY!}`,
+          "HTTP-Referer": "https://bacsmart.ro",
+          "X-Title": "BACsmart",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1000,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...openRouterMessages,
+          ],
+        }),
+      });
+
+      if (res.ok) {
+        data = await res.json();
+        break;
+      } else {
+        lastError = await res.text();
+        console.error(`OpenRouter model ${model} failed:`, lastError);
+      }
     }
 
-    const data = await response.json();
+    if (!data) {
+      return NextResponse.json({ error: `AI API error: ${lastError.slice(0, 200)}` }, { status: 500 });
+    }
+
     const text = data.choices?.[0]?.message?.content || "Ne pare rău, nu am putut genera un răspuns.";
 
     return NextResponse.json({ reply: text });
