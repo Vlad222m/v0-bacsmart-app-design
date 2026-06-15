@@ -130,6 +130,7 @@ export default function BACsmartApp() {
 
   const [showHelpScreen, setShowHelpScreen] = useState(false);
   const [showNotificationsScreen, setShowNotificationsScreen] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   const [activeSubjects, setActiveSubjects] = useState<string[] | null>(null);
   const [userBacProfile, setUserBacProfile] = useState<string | null>(null);
@@ -555,6 +556,23 @@ export default function BACsmartApp() {
         </div>
       )}
 
+      {/* Reset Progress Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4">
+          <div className="bg-card rounded-2xl p-6 max-w-sm w-full border border-border">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500/10 mx-auto mb-4">
+              <AlertTriangle className="w-6 h-6 text-red-500" />
+            </div>
+            <h3 className="text-xl font-bold text-foreground mb-2 text-center" style={{ fontFamily: "var(--font-syne)" }}>Resetează tot progresul?</h3>
+            <p className="text-muted-foreground mb-4 text-center text-sm">Această acțiune va șterge toate statisticile, scorurile la teste și progresul la materii. Nu poate fi anulată.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowResetModal(false)} className="flex-1 py-3 rounded-xl font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors">Anulează</button>
+              <button onClick={() => { setShowResetModal(false); handleResetProgress(); }} className="flex-1 py-3 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">Resetează tot</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Auth Screen */}
       {(showAuthScreen || !authUser) && !authLoading && (
         <AuthScreen
@@ -733,7 +751,7 @@ export default function BACsmartApp() {
               <ProgressTab
                 subjects={subjectsState} subjectScores={subjectScores}
                 onPracticeSubject={navigateToTests} showToastMessage={showToastMessage}
-                onResetProgress={handleResetProgress}
+                onResetProgress={() => setShowResetModal(true)}
               />
             )}
             {activeTab === "premium" && <PremiumTab onPlanClick={handlePremiumClick} currentPlan={currentPlan} />}
