@@ -59,6 +59,18 @@ export interface Summary {
   created_at: string
 }
 
+export interface SavedQuiz {
+  id: string
+  user_id: string
+  title: string
+  file_name: string
+  difficulty: string
+  questions: any[]
+  score: number
+  total: number
+  created_at: string
+}
+
 // Auth helpers
 export const signUpWithEmail = async (email: string, password: string, fullName: string) => {
   if (!supabase) throw new Error("Supabase not configured")
@@ -248,6 +260,35 @@ export const getSummaries = async (userId: string) => {
 export const deleteSummary = async (summaryId: string) => {
   if (!supabase) return
   const { error } = await supabase.from("summaries").delete().eq("id", summaryId)
+  if (error) throw error
+}
+
+// Quiz (teste generate) helpers
+export const saveQuiz = async (userId: string, title: string, fileName: string, difficulty: string, questions: any[], score: number, total: number) => {
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from("quizzes")
+    .insert({ user_id: userId, title, file_name: fileName, difficulty, questions, score, total })
+    .select()
+    .single()
+  if (error) throw error
+  return data as SavedQuiz
+}
+
+export const getQuizzes = async (userId: string) => {
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from("quizzes")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return data as SavedQuiz[]
+}
+
+export const deleteQuiz = async (quizId: string) => {
+  if (!supabase) return
+  const { error } = await supabase.from("quizzes").delete().eq("id", quizId)
   if (error) throw error
 }
 

@@ -121,7 +121,7 @@ export default function RezumateTab({
         <span className="text-[10px] bg-card border border-border px-2 py-0.5 rounded-full text-muted-foreground">PDF</span>
         <span className="text-[10px] bg-card border border-border px-2 py-0.5 rounded-full text-muted-foreground">DOC/DOCX</span>
         <span className="text-[10px] bg-card border border-border px-2 py-0.5 rounded-full text-muted-foreground">TXT</span>
-        <span className="text-[10px] text-muted-foreground/60 ml-1">Max 10MB / ~24.000 caractere</span>
+        <span className="text-[10px] text-muted-foreground/60 ml-1">Max 10MB / ~30.000 caractere</span>
       </div>
 
       {!generatedSummary && (

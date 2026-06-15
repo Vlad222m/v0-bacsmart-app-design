@@ -17,7 +17,7 @@ import {
   saveTestScore, getAggregatedScores, saveSubjectProgress,
   getSubjectProgress, saveSummary as saveSummaryToDb,
   getSummaries, deleteSummary as deleteSummaryFromDb,
-  resetUserProgress, type UserProfile,
+  saveQuiz, getQuizzes, deleteQuiz, type UserProfile, type SavedQuiz,
 } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import type { User } from "@supabase/supabase-js";
@@ -108,6 +108,9 @@ export default function BACsmartApp() {
   const [docQuizShowResult, setDocQuizShowResult] = useState(false);
   const [docQuizScore, setDocQuizScore] = useState(0);
   const [docQuizDifficulty, setDocQuizDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([]);
+  const [showSavedQuizList, setShowSavedQuizList] = useState(false);
+  const [redoingQuizId, setRedoingQuizId] = useState<string | null>(null);
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -163,6 +166,9 @@ export default function BACsmartApp() {
       if (chatHistory.length > 0) {
         setMessages(chatHistory.map((msg, i) => ({ id: i + 1, text: msg.content, isUser: msg.role === "user" })));
       }
+
+      const quizzes = await getQuizzes(userId);
+      if (quizzes.length > 0) setSavedQuizzes(quizzes);
 
       const summaries = await getSummaries(userId);
       if (summaries.length > 0) {
@@ -374,6 +380,26 @@ export default function BACsmartApp() {
     setDocQuizShowResult(true);
   };
 
+  const saveCurrentQuiz = async () => {
+    if (!generatedQuizQuestions.length || !documentQuizFile) return;
+    const title = documentQuizFile.name.replace(/\.[^/.]+$/, "");
+    const quizData = {
+      id: Date.now().toString(),
+      title,
+      difficulty: docQuizDifficulty,
+      questions: generatedQuizQuestions,
+      score: docQuizScore,
+      total: generatedQuizQuestions.length,
+      fileName: documentQuizFile.name,
+    };
+    setSavedQuizzes((prev) => [quizData as SavedQuiz, ...prev]);
+    if (authUser) {
+      try {
+        await saveQuiz(authUser.id, title, documentQuizFile.name, docQuizDifficulty, generatedQuizQuestions, docQuizScore, generatedQuizQuestions.length);
+      } catch (e) { console.error("Error saving quiz:", e); }
+    }
+  };
+
   const nextDocQuizQuestion = () => {
     if (currentDocQuizIndex < generatedQuizQuestions.length - 1) {
       setCurrentDocQuizIndex(currentDocQuizIndex + 1);
@@ -381,8 +407,35 @@ export default function BACsmartApp() {
       setDocQuizShowResult(false);
     } else {
       showToastMessage(`✅ Quiz finalizat! Scor: ${docQuizScore}/${generatedQuizQuestions.length}`);
+      saveCurrentQuiz();
       setGeneratedQuizQuestions([]);
       setShowDocumentQuizUpload(false);
+      setShowSavedQuizList(false);
+    }
+  };
+
+  const retakeQuiz = (quiz: SavedQuiz) => {
+    setGeneratedQuizQuestions(quiz.questions);
+    setCurrentDocQuizIndex(0);
+    setDocQuizSelectedAnswer(null);
+    setDocQuizShowResult(false);
+    setDocQuizScore(0);
+    setShowDocumentQuizUpload(false);
+    setShowSavedQuizList(false);
+  };
+
+  const deleteSavedQuiz = async (id: string) => {
+    setSavedQuizzes((prev) => prev.filter((q) => q.id !== id));
+    if (authUser) {
+      try { await deleteQuiz(id); } catch (e) { console.error("Error deleting quiz:", e); }
+    }
+    showToastMessage("Test șters");
+  };
+
+  const openSavedQuizList = () => {
+    setShowSavedQuizList(true);
+    if (authUser) {
+      getQuizzes(authUser.id).then((q) => setSavedQuizzes(q)).catch(() => {});
     }
   };
 
@@ -483,12 +536,75 @@ export default function BACsmartApp() {
         <HelpScreen onBack={() => setShowHelpScreen(false)} showToastMessage={showToastMessage} />
       )}
 
+      {/* Saved Quiz List Screen */}
+      {showSavedQuizList && !generatedQuizQuestions.length && (
+        <div className="fixed inset-0 bg-[#08080D] z-[150] p-4">
+          <div className="h-full flex flex-col max-w-md mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <button onClick={() => setShowSavedQuizList(false)} className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+                <span className="font-medium">Inapoi</span>
+              </button>
+              <h1 className="text-lg font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>Teste salvate</h1>
+              <div className="w-20" />
+            </div>
+            {savedQuizzes.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <FileText className="w-16 h-16 text-muted-foreground/40 mb-4" />
+                <p className="text-foreground font-medium mb-1">Niciun test salvat</p>
+                <p className="text-muted-foreground text-sm">Testele tale generate vor apărea aici</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto space-y-3 pb-4">
+                {savedQuizzes.map((quiz) => (
+                  <div key={quiz.id} className="bg-card rounded-xl p-4 border border-border">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground text-sm truncate">{quiz.title}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                            {quiz.difficulty === "easy" ? "Ușor" : quiz.difficulty === "medium" ? "Mediu" : "Dificil"}
+                          </span>
+                          <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                            {quiz.total} întrebări
+                          </span>
+                          {quiz.total > 0 && (
+                            <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                              {Math.round((quiz.score / quiz.total) * 100)}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => retakeQuiz(quiz)}
+                        className="flex-1 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-1"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" /> Refă testul
+                      </button>
+                      <button
+                        onClick={() => deleteSavedQuiz(quiz.id)}
+                        className="py-2 px-3 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Document Quiz Upload Screen */}
       {showDocumentQuizUpload && !generatedQuizQuestions.length && (
         <DocumentQuizUploadScreen
           onBack={() => { setShowDocumentQuizUpload(false); setDocumentQuizFile(null); setIsGeneratingQuiz(false); }}
           onFileSelected={generateDocumentQuiz} isGenerating={isGeneratingQuiz}
           difficulty={docQuizDifficulty} setDifficulty={setDocQuizDifficulty}
+          onSavedQuizzes={openSavedQuizList} savedQuizCount={savedQuizzes.length}
         />
       )}
 
