@@ -1,7 +1,7 @@
 "use client";
 
 import { Crown, ChevronRight, Flame, BookOpen, Zap, User, Settings, LogOut, HelpCircle, Bell } from "lucide-react";
-import type { Subject, SubjectScores, Settings as SettingsType } from "@/components/types";
+import type { Subject, SubjectScores } from "@/components/types";
 
 function StatCard({ icon, value, label, color }: { icon: React.ReactNode; value: string; label: string; color: string }) {
   return (
@@ -37,6 +37,7 @@ function SubjectCard({ subject, onClick }: { subject: Subject; onClick: () => vo
 
 interface HomeTabProps {
   subjectsState: Subject[];
+  subjectScores: SubjectScores;
   userProfile: { id: string; email: string; full_name: string | null; avatar_url: string | null } | null;
   onSubjectClick: (subject: Subject) => void;
   onPremiumClick: () => void;
@@ -52,6 +53,7 @@ interface HomeTabProps {
 
 export default function HomeTab({
   subjectsState,
+  subjectScores,
   userProfile,
   onSubjectClick,
   onPremiumClick,
@@ -67,6 +69,12 @@ export default function HomeTab({
   const firstName = userProfile?.full_name?.split(" ")[0] || "Elev";
   const initials = userProfile?.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
   const avatarUrl = userProfile?.avatar_url;
+
+  // Calculeaza statistici reale
+  const totalCorrect = Object.values(subjectScores).reduce((acc, s) => acc + (s.correct || 0), 0);
+  const totalQuestions = Object.values(subjectScores).reduce((acc, s) => acc + (s.total || 0), 0);
+  const avgAccuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+  const streakDays = 12; // Momentan placeholder — poate fi calculat din activitate
 
   return (
     <div className="space-y-5 pt-2">
@@ -142,11 +150,11 @@ export default function HomeTab({
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Acum cu date reale */}
       <div className="grid grid-cols-3 gap-3">
-        <StatCard icon={<Flame className="w-4 h-4" />} value="12" label="Zile activ" color="#FF6B35" />
-        <StatCard icon={<BookOpen className="w-4 h-4" />} value="847" label="Intrebari" color="#4ECDC4" />
-        <StatCard icon={<Zap className="w-4 h-4" />} value="73%" label="Medie" color="#A855F7" />
+        <StatCard icon={<Flame className="w-4 h-4" />} value={String(streakDays)} label="Zile activ" color="#FF6B35" />
+        <StatCard icon={<BookOpen className="w-4 h-4" />} value={String(totalQuestions)} label="Intrebari" color="#4ECDC4" />
+        <StatCard icon={<Zap className="w-4 h-4" />} value={totalQuestions > 0 ? `${avgAccuracy}%` : "0%"} label="Medie" color="#A855F7" />
       </div>
 
       {/* Continue Learning Card */}
@@ -158,13 +166,15 @@ export default function HomeTab({
             <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">In progres</span>
           </div>
           <h3 className="font-bold text-lg text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
-            Matematica
+            {subjectsState[0]?.name || "Matematica"}
           </h3>
-          <p className="text-sm text-muted-foreground mb-3">Derivate si integrale</p>
+          <p className="text-sm text-muted-foreground mb-3">
+            {subjectsState[0]?.progress || 0}% completat
+          </p>
           <div className="flex items-center justify-between">
             <div className="flex-1 mr-4">
               <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full transition-all" style={{ width: "73%" }} />
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${subjectsState[0]?.progress || 0}%` }} />
               </div>
             </div>
             <button

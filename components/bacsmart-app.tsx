@@ -434,7 +434,8 @@ export default function BACsmartApp() {
 
   const openSavedQuizList = () => {
     setShowSavedQuizList(true);
-    if (authUser) {
+    // Incarca din DB doar daca nu avem deja in state
+    if (authUser && savedQuizzes.length === 0) {
       getQuizzes(authUser.id).then((q) => setSavedQuizzes(q)).catch(() => {});
     }
   };
@@ -629,7 +630,8 @@ export default function BACsmartApp() {
           <div className="flex-1 overflow-y-auto mobile-scrollbar px-4 pb-24">
             {activeTab === "home" && (
               <HomeTab
-                subjectsState={subjectsState} userProfile={userProfile}
+                subjectsState={subjectsState} subjectScores={subjectScores}
+                userProfile={userProfile}
                 onSubjectClick={navigateToChat} onPremiumClick={() => setActiveTab("premium")}
                 showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu}
                 currentPlan={currentPlan}
