@@ -24,19 +24,24 @@ Rolul tău:
 
 Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
 
-    // Pastram ultimele 10 mesaje pentru context recent
-    // + generam un rezumat al conversatiei mai vechi (daca exista)
-    const MAX_HISTORY = 10;
+    // Ultimele 20 de mesaje se trimit integral
+    // Mesajele mai vechi sunt rezumate compact (consuma foarte putini tokeni)
+    const MAX_RECENT = 20;
     const allMessages = messages.filter((m: { text?: string }) => m.text && m.text.trim());
-    const recentMessages = allMessages.slice(-MAX_HISTORY);
-    const olderMessages = allMessages.slice(0, -MAX_HISTORY);
+    const recentMessages = allMessages.slice(-MAX_RECENT);
+    const olderMessages = allMessages.slice(0, -MAX_RECENT);
 
-    // Generam rezumatul conversatiei anterioare
-    let summaryContext = "";
-    if (olderMessages.length > 4) {
-      const userQs = olderMessages.filter((m: { isUser: boolean }) => m.isUser).map((m: { text: string }) => m.text);
-      const aiAnswers = olderMessages.filter((m: { isUser: boolean }) => !m.isUser).map((m: { text: string }) => m.text);
-      summaryContext = `[Rezumatul conversatiei anterioare: Elevul a pus ${userQs.length} intrebari despre ${subjectName}, printre care: "${userQs.slice(0, 3).join('", "')}". Profesorul a oferit explicatii detaliate si exemple. Continuă naturalețea conversatiei.]\n\n`;
+    // Rezumat compact al conversatiei vechi
+    let summaryPrefix = "";
+    if (olderMessages.length > 0) {
+      const userParts = olderMessages
+        .filter((m: { isUser: boolean }) => m.isUser)
+        .map((m: { text: string }) => m.text);
+      // Luam doar primele cuvinte din fiecare intrebare = rezumat ultra-compact
+      const topicHints = userParts
+        .map((t: string) => t.split(" ").slice(0, 6).join(" "))
+        .slice(0, 5);
+      summaryPrefix = `[Context anterior: elevul a intrebat despre: ${topicHints.join("; ")}. Păstrează coerența cu ce s-a discutat.]\n\n`;
     }
 
     const openRouterMessages = recentMessages.map((m: { isUser: boolean; text: string }) => ({
@@ -44,15 +49,15 @@ Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
       content: m.text,
     }));
 
-    // Adaugam rezumatul la primul mesaj ca sa stie AI-ul contextul vechi
-    if (summaryContext && openRouterMessages.length > 0) {
+    // Adaugam rezumatul la primul mesaj ca sa ofere context
+    if (summaryPrefix && openRouterMessages.length > 0) {
       openRouterMessages[0] = {
         role: "user",
-        content: summaryContext + openRouterMessages[0].content,
+        content: summaryPrefix + openRouterMessages[0].content,
       };
     }
 
-    // Ensure first message is from user
+    // Asiguram ca primul mesaj e de la user
     while (openRouterMessages.length > 0 && openRouterMessages[0].role !== "user") {
       openRouterMessages.shift();
     }
@@ -61,8 +66,7 @@ Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
       return NextResponse.json({ error: "No valid user message" }, { status: 400 });
     }
 
-    // Cele mai eficiente modele ca pret/performanta
-    // google/gemini-2.5-flash-lite: ~$0.015/1M input tokens
+    // Modele OpenRouter ordonate dupa eficienta
     const MODELS = [
       "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash",
