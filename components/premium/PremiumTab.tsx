@@ -22,7 +22,7 @@ export default function PremiumTab({ onPlanClick, currentPlan }: PremiumTabProps
     {
       id: "monthly" as const,
       name: "Premium",
-      price: "50",
+      price: "49",
       period: "/luna",
       features: ["Mesaje nelimitate", "Toate testele", "Progres detaliat", "Fara reclame", "Suport prioritar"],
       popular: true,

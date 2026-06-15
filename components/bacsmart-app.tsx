@@ -418,7 +418,7 @@ export default function BACsmartApp() {
               {premiumModalType === "monthly" ? "Abonament Premium" : "Abonament Anual"}
             </h3>
             <p className="text-muted-foreground mb-4">
-              {premiumModalType === "monthly" ? "50 lei/luna - Acces complet la toate functiile" : "35 lei/luna - Economisesti 180 lei pe an!"}
+              {premiumModalType === "monthly" ? "49 lei/luna - Acces complet la toate functiile" : "35 lei/luna - Economisesti 180 lei pe an!"}
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowPremiumModal(false)} className="flex-1 py-3 rounded-xl font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors">Anuleaza</button>
