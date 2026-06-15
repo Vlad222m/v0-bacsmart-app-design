@@ -24,9 +24,11 @@ Rolul tău:
 
 Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
 
-    // Map app messages to OpenRouter/OpenAI format
+    // Map app messages to OpenRouter format + limit to last 10 messages (economiseste tokeni)
+    const MAX_HISTORY = 10;
     const openRouterMessages = messages
       .filter((m: { text?: string }) => m.text && m.text.trim())
+      .slice(-MAX_HISTORY)
       .map((m: { isUser: boolean; text: string }) => ({
         role: m.isUser ? "user" : "assistant",
         content: m.text,
@@ -41,10 +43,12 @@ Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
       return NextResponse.json({ error: "No valid user message" }, { status: 400 });
     }
 
+    // Cele mai eficiente modele ca pret/performanta
+    // google/gemini-2.5-flash-lite: ~$0.015/1M input tokens
     const MODELS = [
+      "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash",
       "openai/gpt-4o-mini",
-      "google/gemini-2.5-flash-lite",
     ];
 
     let lastError = "";

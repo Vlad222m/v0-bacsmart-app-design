@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const maxDuration = 60;
+const MAX_TEXT_INPUT = 8000; // Limita de text trimis la API - suficient + eficient
 
 async function extractText(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();
@@ -9,16 +10,15 @@ async function extractText(file: File): Promise<string> {
   const type = file.type;
 
   if (type === "text/plain" || name.endsWith(".txt")) {
-    return buffer.toString("utf-8").slice(0, 50000);
+    return buffer.toString("utf-8").slice(0, MAX_TEXT_INPUT);
   }
 
   if (type === "application/pdf" || name.endsWith(".pdf")) {
     try {
       const pdfParse = (await import("pdf-parse")).default;
       const data = await pdfParse(buffer);
-      return data.text.slice(0, 50000);
-    } catch (e) {
-      console.error("PDF parse error:", e);
+      return data.text.slice(0, MAX_TEXT_INPUT);
+    } catch {
       return `[Document PDF: "${file.name}"]`;
     }
   }
@@ -30,9 +30,8 @@ async function extractText(file: File): Promise<string> {
     try {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer });
-      return result.value.slice(0, 50000);
-    } catch (e) {
-      console.error("DOCX parse error:", e);
+      return result.value.slice(0, MAX_TEXT_INPUT);
+    } catch {
       return `[Document Word: "${file.name}"]`;
     }
   }
@@ -47,7 +46,7 @@ async function extractText(file: File): Promise<string> {
       extractedText = "";
     }
     return extractedText.length > 50
-      ? extractedText.slice(0, 50000)
+      ? extractedText.slice(0, MAX_TEXT_INPUT)
       : `[Document Word: "${file.name}"]`;
   }
 
@@ -76,10 +75,11 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără markdown, fără ba
   "questions": ["intrebare 1", "intrebare 2", "intrebare 3"]
 }`;
 
+    // Cele mai eficiente modele ca pret/performanta
     const MODELS = [
+      "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash",
       "openai/gpt-4o-mini",
-      "google/gemini-2.5-flash-lite",
     ];
 
     let lastError = "";

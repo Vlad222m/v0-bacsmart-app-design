@@ -1,29 +1,27 @@
 import { NextResponse } from "next/server";
 
+const MAX_TEXT_INPUT = 8000; // Limita de text trimis la API - suficient + eficient
+
 async function extractText(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
   const name = file.name.toLowerCase();
   const type = file.type;
 
-  // Plain text
   if (type === "text/plain" || name.endsWith(".txt")) {
-    return buffer.toString("utf-8").slice(0, 50000);
+    return buffer.toString("utf-8").slice(0, MAX_TEXT_INPUT);
   }
 
-  // PDF cu pdf-parse
   if (type === "application/pdf" || name.endsWith(".pdf")) {
     try {
       const pdfParse = (await import("pdf-parse")).default;
       const data = await pdfParse(buffer);
-      return data.text.slice(0, 50000);
-    } catch (e) {
-      console.error("PDF parse error:", e);
+      return data.text.slice(0, MAX_TEXT_INPUT);
+    } catch {
       return `[Document PDF: "${file.name}"]`;
     }
   }
 
-  // DOCX cu mammoth
   if (
     name.endsWith(".docx") ||
     type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -31,20 +29,16 @@ async function extractText(file: File): Promise<string> {
     try {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer });
-      return result.value.slice(0, 50000);
-    } catch (e) {
-      console.error("DOCX parse error:", e);
+      return result.value.slice(0, MAX_TEXT_INPUT);
+    } catch {
       return `[Document Word: "${file.name}"]`;
     }
   }
 
-  // Imagini - nu le mai trimitem ca imagine! Returnăm un placeholder
-  // și îi spunem AI-ului să genereze pe baza numelui fișierului
   if (type.startsWith("image/")) {
     return `[Imagine: "${file.name}". Generează întrebări relevante pentru BAC pe baza numelui fișierului.]`;
   }
 
-  // Fallback
   return `[Fișier: "${file.name}" de tip ${type || "necunoscut"}]`;
 }
 
@@ -78,10 +72,11 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
   ]
 }`;
 
+    // Cele mai eficiente modele ca pret/performanta
     const MODELS = [
+      "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash",
       "openai/gpt-4o-mini",
-      "google/gemini-2.5-flash-lite",
     ];
 
     let lastError = "";
