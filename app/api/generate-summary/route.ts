@@ -51,7 +51,19 @@ async function extractText(file: File): Promise<string> {
   }
 
   if (type.startsWith("image/")) {
-    return `[Imagine: "${file.name}". Creează un rezumat pe baza numelui fișierului.]`;
+    try {
+      const { recognize } = await import("tesseract.js");
+      const { data } = await recognize(buffer, "ron+eng", {
+        logger: () => {},
+      });
+      const text = data.text.trim();
+      if (text.length > 20) {
+        return `[Text extras din imaginea "${file.name}" prin OCR]:\n${text.slice(0, MAX_TEXT_INPUT)}`;
+      }
+    } catch {
+      // OCR a eșuat, fallback la nume fișier
+    }
+    return `[Imagine: "${file.name}"]`;
   }
 
   return `[Fișier: "${file.name}" de tip ${type || "necunoscut"}]`;
