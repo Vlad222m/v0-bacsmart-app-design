@@ -7,6 +7,9 @@ const nextConfig = {
     unoptimized: true,
   },
   allowedDevOrigins: ['*.vusercontent.net', 'localhost', '127.0.0.1'],
+  turbopack: {
+    root: process.cwd(),
+  },
 }
 
 export default nextConfig
