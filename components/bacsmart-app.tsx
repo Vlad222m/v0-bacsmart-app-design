@@ -17,7 +17,7 @@ import {
   saveTestScore, getAggregatedScores, saveSubjectProgress,
   getSubjectProgress, saveSummary as saveSummaryToDb,
   getSummaries, deleteSummary as deleteSummaryFromDb,
-  saveQuiz, getQuizzes, deleteQuiz, type UserProfile, type SavedQuiz,
+  saveQuiz, getQuizzes, deleteQuiz, saveBacPreferences, type UserProfile, type SavedQuiz,
 } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import type { User } from "@supabase/supabase-js";
@@ -602,7 +602,33 @@ export default function BACsmartApp() {
 
       {/* Settings Screen */}
       {showSettingsScreen && (
-        <SettingsScreen settings={settings} setSettings={setSettings} onBack={() => setShowSettingsScreen(false)} showToastMessage={showToastMessage} />
+        <SettingsScreen
+          settings={settings} setSettings={setSettings}
+          onBack={() => setShowSettingsScreen(false)} showToastMessage={showToastMessage}
+          userBacProfile={userBacProfile}
+          activeSubjects={activeSubjects}
+          onBacProfileChange={(bacProfile, subjects) => {
+            setUserBacProfile(bacProfile);
+            setActiveSubjects(subjects);
+            if (authUser) {
+              saveBacPreferences(authUser.id, bacProfile, subjects).catch(console.error);
+            }
+            // Update subjectsState to reflect new selection
+            setSubjectsState(subjectsState.filter((s) => subjects.includes(s.name)));
+          }}
+          onResetBacProfile={() => {
+            setUserBacProfile(null);
+            setActiveSubjects(null);
+            setSubjectsState(subjects);
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("bac_profile");
+              localStorage.removeItem("selected_subjects");
+            }
+            if (authUser) {
+              saveBacPreferences(authUser.id, "", subjects.map((s) => s.name)).catch(console.error);
+            }
+          }}
+        />
       )}
 
       {showNotificationsScreen && (

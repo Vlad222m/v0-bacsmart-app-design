@@ -5,6 +5,9 @@ import { Check, ChevronRight, Sparkles, ArrowLeft } from "lucide-react";
 
 interface BacProfileQuizProps {
   onComplete: (bacProfile: string, selectedSubjects: string[]) => void;
+  initialProfile?: string;
+  initialSubjects?: string[];
+  onSkip?: () => void;
 }
 
 const ALL_SUBJECTS = [
@@ -70,10 +73,10 @@ const BAC_PROFILES = [
   },
 ];
 
-export default function BacProfileQuiz({ onComplete }: BacProfileQuizProps) {
-  const [step, setStep] = useState<"profile" | "subjects">("profile");
-  const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+export default function BacProfileQuiz({ onComplete, initialProfile, initialSubjects, onSkip }: BacProfileQuizProps) {
+  const [step, setStep] = useState<"profile" | "subjects">(initialProfile && initialProfile !== "custom" && initialProfile !== "all" ? "subjects" : "profile");
+  const [selectedProfile, setSelectedProfile] = useState<string | null>(initialProfile || null);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(initialSubjects || []);
 
   const handleProfileSelect = (profileId: string) => {
     const profile = BAC_PROFILES.find((p) => p.id === profileId);
@@ -321,6 +324,16 @@ export default function BacProfileQuiz({ onComplete }: BacProfileQuizProps) {
                   : "Selectează cel puțin o materie"
                 : `${profileSubjects.length + selectedSubjects.length} materii selectate`}
             </p>
+
+            {/* Skip button (only in edit mode) */}
+            {onSkip && (
+              <button
+                onClick={onSkip}
+                className="w-full mt-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Anulează
+              </button>
+            )}
           </>
         )}
       </div>

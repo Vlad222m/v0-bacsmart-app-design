@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Bell, Palette, BarChart3, Trash2 } from "lucide-react";
+import { ArrowLeft, Bell, Palette, BarChart3, Trash2, BookOpen, Pencil, RotateCcw } from "lucide-react";
 import type { Settings } from "@/components/types";
+import BacProfileQuiz from "@/components/auth/BacProfileQuiz";
 
 interface SettingsScreenProps {
   settings: Settings;
   setSettings: (settings: Settings) => void;
   onBack: () => void;
   showToastMessage: (msg: string) => void;
+  userBacProfile?: string | null;
+  activeSubjects?: string[] | null;
+  onBacProfileChange?: (bacProfile: string, selectedSubjects: string[]) => void;
+  onResetBacProfile?: () => void;
 }
 
 function ToggleSwitch({ checked, onChange, disabled = false }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
@@ -30,16 +35,37 @@ export default function SettingsScreen({
   setSettings,
   onBack,
   showToastMessage,
+  userBacProfile,
+  activeSubjects,
+  onBacProfileChange,
+  onResetBacProfile,
 }: SettingsScreenProps) {
   const [localSettings, setLocalSettings] = useState(settings);
   const [showDeleteChatConfirm, setShowDeleteChatConfirm] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [showBacQuiz, setShowBacQuiz] = useState(false);
 
   const handleToggle = (key: keyof Settings) => {
     if (key === "darkMode") return;
     const newSettings = { ...localSettings, [key]: !localSettings[key] };
     setLocalSettings(newSettings);
     setSettings(newSettings);
+  };
+
+  const profileLabels: Record<string, string> = {
+    real: "Real",
+    uman: "Umanist",
+    stiinte: "Științe",
+    info: "Info / Tech",
+    custom: "Personalizat",
+    all: "Toate materiile",
+  };
+
+  const getProfileSummary = () => {
+    if (!userBacProfile) return "Toate materiile";
+    const label = profileLabels[userBacProfile] || userBacProfile;
+    const count = activeSubjects?.length || 9;
+    return `${label} — ${count} materii`;
   };
 
   return (
@@ -117,6 +143,46 @@ export default function SettingsScreen({
             </div>
           </div>
 
+          {/* BAC Profile */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpen className="w-4 h-4 text-primary" />
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Profil BAC</h2>
+            </div>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-foreground font-medium">Profilul tău</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">{getProfileSummary()}</p>
+                  </div>
+                  <button
+                    onClick={() => setShowBacQuiz(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Schimbă
+                  </button>
+                </div>
+                {activeSubjects && activeSubjects.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {activeSubjects.map((s) => (
+                      <span key={s} className="text-[11px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{s}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  if (onResetBacProfile) onResetBacProfile();
+                  showToastMessage("Profil BAC resetat. Vezi toate materiile.");
+                }}
+                className="w-full p-4 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" /> Resetează la toate materiile
+              </button>
+            </div>
+          </div>
+
           {/* Account */}
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -161,6 +227,20 @@ export default function SettingsScreen({
             </div>
           </div>
         </div>
+      )}
+
+      {/* BAC Profile Quiz Modal (from Settings) */}
+      {showBacQuiz && (
+        <BacProfileQuiz
+          initialProfile={userBacProfile || undefined}
+          initialSubjects={activeSubjects || undefined}
+          onComplete={(bacProfile, subjects) => {
+            if (onBacProfileChange) onBacProfileChange(bacProfile, subjects);
+            setShowBacQuiz(false);
+            showToastMessage("Profil BAC actualizat!");
+          }}
+          onSkip={() => setShowBacQuiz(false)}
+        />
       )}
     </div>
   );
