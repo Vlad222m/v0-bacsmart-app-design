@@ -17,6 +17,8 @@ export interface UserProfile {
   current_plan: "free" | "premium"
   streak_days: number
   total_study_hours: number
+  bac_profile: string | null
+  selected_subjects: string[] | null
   created_at: string
   updated_at: string
 }
@@ -111,31 +113,31 @@ export const signOut = async () => {
 // Profile helpers
 export const getOrCreateProfile = async (userId: string, email: string, fullName?: string, avatarUrl?: string) => {
   if (!supabase) return null
-  
+
   const { data: existingProfile } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", userId)
     .single()
-  
+
   if (existingProfile) {
     if ((fullName && !existingProfile.full_name) || (avatarUrl && !existingProfile.avatar_url)) {
       const updates: Record<string, string> = {}
       if (fullName && !existingProfile.full_name) updates.full_name = fullName
       if (avatarUrl && !existingProfile.avatar_url) updates.avatar_url = avatarUrl
-      
+
       const { data: updatedProfile } = await supabase
         .from("profiles")
         .update(updates)
         .eq("id", userId)
         .select()
         .single()
-      
+
       return updatedProfile as UserProfile
     }
     return existingProfile as UserProfile
   }
-  
+
   const { data: newProfile, error } = await supabase
     .from("profiles")
     .insert({
@@ -146,10 +148,12 @@ export const getOrCreateProfile = async (userId: string, email: string, fullName
       current_plan: "free",
       streak_days: 0,
       total_study_hours: 0,
+      bac_profile: null,
+      selected_subjects: null,
     })
     .select()
     .single()
-  
+
   if (error) throw error
   return newProfile as UserProfile
 }
@@ -308,4 +312,22 @@ export const resetUserProgress = async (userId: string) => {
   await supabase.from("test_scores").delete().eq("user_id", userId)
   await supabase.from("subject_progress").delete().eq("user_id", userId)
   await supabase.from("profiles").update({ streak_days: 0, total_study_hours: 0 }).eq("id", userId)
+}
+
+export const saveBacPreferences = async (userId: string, bacProfile: string, selectedSubjects: string[]) => {
+  if (!supabase) {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("bac_profile", bacProfile)
+      localStorage.setItem("selected_subjects", JSON.stringify(selectedSubjects))
+    }
+    return
+  }
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ bac_profile: bacProfile, selected_subjects: selectedSubjects })
+    .eq("id", userId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as UserProfile
 }

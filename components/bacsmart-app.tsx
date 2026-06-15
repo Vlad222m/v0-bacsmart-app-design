@@ -131,6 +131,9 @@ export default function BACsmartApp() {
   const [showHelpScreen, setShowHelpScreen] = useState(false);
   const [showNotificationsScreen, setShowNotificationsScreen] = useState(false);
 
+  const [activeSubjects, setActiveSubjects] = useState<string[] | null>(null);
+  const [userBacProfile, setUserBacProfile] = useState<string | null>(null);
+
   const [notifications, setNotifications] = useState<NotificationItem[]>([
     { id: 1, icon: "🎯", title: "Test completat!", description: "Ai obținut 8/10 la Matematică", time: "acum 2 ore", read: false },
     { id: 2, icon: "📚", title: "Reminder studiu", description: "Nu ai studiat azi. Hai să învățăm!", time: "acum 5 ore", read: false },
@@ -155,6 +158,28 @@ export default function BACsmartApp() {
     try {
       const profile = await getOrCreateProfile(userId, email, userMetadata?.full_name, userMetadata?.avatar_url);
       setUserProfile(profile);
+
+      // Load BAC profile preferences
+      let bacSubjects: string[] | null = null;
+      if (profile?.bac_profile && profile?.selected_subjects?.length) {
+        setUserBacProfile(profile.bac_profile);
+        bacSubjects = profile.selected_subjects;
+      } else {
+        // Check localStorage
+        if (typeof window !== "undefined") {
+          const localProfile = localStorage.getItem("bac_profile");
+          const localSubjects = localStorage.getItem("selected_subjects");
+          if (localProfile && localSubjects) {
+            setUserBacProfile(localProfile);
+            bacSubjects = JSON.parse(localSubjects);
+            // Save to DB
+            try {
+              await saveBacPreferences(userId, localProfile, bacSubjects);
+            } catch (e) { console.error("Error saving bac preferences to DB:", e); }
+          }
+        }
+      }
+
       const scores = await getAggregatedScores(userId);
       setSubjectScores(scores);
       const progress = await getSubjectProgress(userId);
@@ -162,7 +187,15 @@ export default function BACsmartApp() {
         const saved = progress.find((p) => p.subject === s.name);
         return saved ? { ...s, progress: saved.progress } : s;
       });
-      setSubjectsState(updatedSubjects);
+
+      // Filter subjects based on BAC preferences
+      if (bacSubjects && bacSubjects.length > 0) {
+        setActiveSubjects(bacSubjects);
+        setSubjectsState(updatedSubjects.filter((s) => bacSubjects.includes(s.name)));
+      } else {
+        setActiveSubjects(null);
+        setSubjectsState(updatedSubjects);
+      }
 
       const chatHistory = await getChatHistory(userId, selectedSubject.name);
       if (chatHistory.length > 0) {
@@ -218,12 +251,19 @@ export default function BACsmartApp() {
   const showToastMessage = (message: string) => { setToastMessage(message); setShowToast(true); };
 
   const getFilteredQuestions = () => {
-    if (testSubjectFilter === "Toate") return allTestQuestions;
-    return allTestQuestions.filter((q) => q.subject === testSubjectFilter);
+    const base = activeSubjects
+      ? allTestQuestions.filter((q) => activeSubjects.includes(q.subject))
+      : allTestQuestions;
+    if (testSubjectFilter === "Toate") return base;
+    return base.filter((q) => q.subject === testSubjectFilter);
   };
 
   const selectNextQuestion = () => {
     const filtered = getFilteredQuestions();
+    if (filtered.length === 0) {
+      setCurrentQuestionIndex(null);
+      return;
+    }
     const filteredIndices = filtered.map((q) => allTestQuestions.indexOf(q));
     const available = filteredIndices.filter((idx) => !usedQuestionIndices.includes(idx));
     if (available.length === 0) {
@@ -517,7 +557,19 @@ export default function BACsmartApp() {
 
       {/* Auth Screen */}
       {(showAuthScreen || !authUser) && !authLoading && (
-        <AuthScreen onAuthSuccess={() => setShowAuthScreen(false)} showToastMessage={showToastMessage} />
+        <AuthScreen
+          onAuthSuccess={() => setShowAuthScreen(false)}
+          showToastMessage={showToastMessage}
+          onBacProfileComplete={(bacProfile, subjects) => {
+            setUserBacProfile(bacProfile);
+            setActiveSubjects(subjects);
+            // Save to localStorage as fallback; DB save happens in loadUserData
+            if (typeof window !== "undefined") {
+              localStorage.setItem("bac_profile", bacProfile);
+              localStorage.setItem("selected_subjects", JSON.stringify(subjects));
+            }
+          }}
+        />
       )}
 
       {/* Profile Screen */}
@@ -656,11 +708,11 @@ export default function BACsmartApp() {
                 sendMessage={sendMessage} isTyping={isTyping}
               />
             )}
-            {activeTab === "tests" && currentQuestionIndex !== null && (
+            {activeTab === "tests" && (
               <TestsTab
                 subjects={subjectsState} testSubjectFilter={testSubjectFilter}
                 setTestSubjectFilter={resetTestOnFilterChange}
-                currentQuestion={allTestQuestions[currentQuestionIndex]}
+                currentQuestion={currentQuestionIndex !== null ? allTestQuestions[currentQuestionIndex] : null}
                 selectedAnswer={selectedAnswer} setSelectedAnswer={setSelectedAnswer}
                 showResult={showResult} handleAnswerSubmit={handleAnswerSubmit}
                 nextQuestion={nextQuestion} subjectScores={subjectScores}

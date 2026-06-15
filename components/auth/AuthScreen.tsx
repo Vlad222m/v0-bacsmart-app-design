@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { Loader, Eye, EyeOff } from "lucide-react";
 import { signUpWithEmail, signInWithEmail, signInWithGoogle } from "@/lib/supabase";
+import BacProfileQuiz from "./BacProfileQuiz";
 
 interface AuthScreenProps {
   onAuthSuccess: () => void;
   showToastMessage: (msg: string) => void;
+  onBacProfileComplete?: (bacProfile: string, selectedSubjects: string[]) => void;
 }
 
-export default function AuthScreen({ onAuthSuccess, showToastMessage }: AuthScreenProps) {
+export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfileComplete }: AuthScreenProps) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,6 +19,7 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage }: AuthScre
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showBacQuiz, setShowBacQuiz] = useState(false);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +35,7 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage }: AuthScre
         }
         await signUpWithEmail(email, password, fullName);
         showToastMessage("Cont creat! Verifica email-ul pentru confirmare.");
+        setShowBacQuiz(true);
       } else {
         await signInWithEmail(email, password);
         onAuthSuccess();
@@ -57,11 +61,20 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage }: AuthScre
     setIsLoading(true);
     try {
       await signInWithGoogle();
+      // Google auth redirects away, so no BacProfile quiz here — user lands back with profile loaded
     } catch (err: any) {
       console.error("Google auth error:", err);
       setError("Eroare la autentificarea cu Google");
       setIsLoading(false);
     }
+  };
+
+  const handleBacComplete = (bacProfile: string, selectedSubjects: string[]) => {
+    if (onBacProfileComplete) {
+      onBacProfileComplete(bacProfile, selectedSubjects);
+    }
+    setShowBacQuiz(false);
+    onAuthSuccess();
   };
 
   return (
@@ -193,6 +206,9 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage }: AuthScre
           </p>
         </div>
       </div>
+
+      {/* BAC Profile Quiz after signup */}
+      {showBacQuiz && <BacProfileQuiz onComplete={handleBacComplete} />}
     </div>
   );
 }
