@@ -2,6 +2,62 @@ import { NextResponse } from "next/server";
 
 export const maxDuration = 60;
 
+async function extractText(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  const name = file.name.toLowerCase();
+  const type = file.type;
+
+  if (type === "text/plain" || name.endsWith(".txt")) {
+    return buffer.toString("utf-8").slice(0, 50000);
+  }
+
+  if (type === "application/pdf" || name.endsWith(".pdf")) {
+    try {
+      const pdfParse = (await import("pdf-parse")).default;
+      const data = await pdfParse(buffer);
+      return data.text.slice(0, 50000);
+    } catch (e) {
+      console.error("PDF parse error:", e);
+      return `[Document PDF: "${file.name}"]`;
+    }
+  }
+
+  if (
+    name.endsWith(".docx") ||
+    type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    try {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value.slice(0, 50000);
+    } catch (e) {
+      console.error("DOCX parse error:", e);
+      return `[Document Word: "${file.name}"]`;
+    }
+  }
+
+  if (name.endsWith(".doc") || type === "application/msword") {
+    let extractedText = "";
+    try {
+      const xmlString = buffer.toString("utf-8");
+      const matches = xmlString.match(/<w:t[^>]*>([^<]+)<\/w:t>/g) || [];
+      extractedText = matches.map((m) => m.replace(/<[^>]+>/g, "")).join(" ").trim();
+    } catch {
+      extractedText = "";
+    }
+    return extractedText.length > 50
+      ? extractedText.slice(0, 50000)
+      : `[Document Word: "${file.name}"]`;
+  }
+
+  if (type.startsWith("image/")) {
+    return `[Imagine: "${file.name}". Creează un rezumat pe baza numelui fișierului.]`;
+  }
+
+  return `[Fișier: "${file.name}" de tip ${type || "necunoscut"}]`;
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -10,13 +66,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const isImage = file.type.startsWith("image/");
-    const isPdf = file.type === "application/pdf";
-    const isDocx = file.name.endsWith(".docx") || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    const isDoc = file.name.endsWith(".doc") || file.type === "application/msword";
-    const isTxt = file.type === "text/plain" || file.name.endsWith(".txt");
+    const extractedText = await extractText(file);
 
     const instruction = `Ești un profesor expert pentru Bacalaureatul din România. Analizează acest material educațional și creează un rezumat de studiu complet.
 Răspunde DOAR cu JSON valid, fără text în afară, fără markdown, fără backticks:
@@ -25,63 +75,6 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără markdown, fără ba
   "keyPoints": ["punct cheie 1", "punct cheie 2", "punct cheie 3", "punct cheie 4", "punct cheie 5", "punct cheie 6"],
   "questions": ["intrebare 1", "intrebare 2", "intrebare 3"]
 }`;
-
-    let messageContent: any[];
-
-    if (isImage) {
-      const base64 = buffer.toString("base64");
-      const mediaType = file.type;
-      messageContent = [
-        { type: "text", text: instruction },
-        {
-          type: "image_url",
-          image_url: {
-            url: `data:${mediaType};base64,${base64}`,
-          },
-        },
-      ];
-    } else if (isPdf) {
-      // For PDFs, use the text-based approach since Gemini doesn't support PDF via standard vision
-      messageContent = [
-        {
-          type: "text",
-          text: `${instruction}\n\nAm primit un document PDF cu numele "${file.name}". Creează un rezumat despre subiectul educațional sugerat de numele fișierului, relevant pentru BAC.`,
-        },
-      ];
-    } else if (isDocx || isDoc) {
-      let extractedText = "";
-      try {
-        const xmlString = buffer.toString("utf-8");
-        const matches = xmlString.match(/<w:t[^>]*>([^<]+)<\/w:t>/g) || [];
-        extractedText = matches.map(m => m.replace(/<[^>]+>/g, "")).join(" ").trim();
-      } catch (e) {
-        extractedText = "";
-      }
-      messageContent = [
-        {
-          type: "text",
-          text: extractedText.length > 100
-            ? `${instruction}\n\nConținutul documentului:\n${extractedText.slice(0, 8000)}`
-            : `${instruction}\n\nAm primit un document Word cu numele "${file.name}". Generează un rezumat despre subiectul indicat de numele fișierului.`,
-        },
-      ];
-    } else if (isTxt) {
-      const textContent = buffer.toString("utf-8");
-      messageContent = [
-        {
-          type: "text",
-          text: `${instruction}\n\nConținutul documentului:\n${textContent.slice(0, 8000)}`,
-        },
-      ];
-    } else {
-      // Fallback
-      messageContent = [
-        {
-          type: "text",
-          text: `${instruction}\n\nAm primit un fișier cu numele "${file.name}". Creează un rezumat general despre subiectul indicat de numele fișierului.`,
-        },
-      ];
-    }
 
     const MODELS = [
       "google/gemini-2.5-flash",
@@ -104,7 +97,12 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără markdown, fără ba
         body: JSON.stringify({
           model,
           max_tokens: 4000,
-          messages: [{ role: "user", content: messageContent }],
+          messages: [
+            {
+              role: "user",
+              content: `${instruction}\n\nConținutul materialului:\n${extractedText}`,
+            },
+          ],
         }),
       });
 
@@ -120,6 +118,7 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără markdown, fără ba
     if (!data) {
       return NextResponse.json({ error: `AI API error: ${lastError.slice(0, 200)}` }, { status: 500 });
     }
+
     const text = data.choices?.[0]?.message?.content || "";
 
     let parsed;
@@ -127,19 +126,16 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără markdown, fără ba
       let clean = text;
       clean = clean.replace(/```json[\r\n]*/g, "").replace(/```[\r\n]*/g, "").trim();
       clean = clean.replace(/„/g, '"').replace(/”/g, '"').replace(/“/g, '"');
-      // Fix truncated JSON
       if (!clean.endsWith("}")) {
         const lastBrace = clean.lastIndexOf("}");
         if (lastBrace > 0) {
           clean = clean.substring(0, lastBrace + 1);
         }
       }
-      // Fix truncated arrays
       clean = clean.replace(/,\s*"questions"\s*:\s*\[[^\]]*$/g, ',"questions":[]');
       parsed = JSON.parse(clean);
     } catch (e) {
       console.error("JSON parse error:", e, "Raw text:", text.substring(0, 500));
-      // Try basic fallback
       const summaryMatch = text.match(/"summary"\s*:\s*"([^"]+)/);
       parsed = {
         summary: summaryMatch?.[1] || "Rezumat indisponibil",

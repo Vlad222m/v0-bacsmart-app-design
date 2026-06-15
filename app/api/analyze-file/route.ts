@@ -1,5 +1,53 @@
 import { NextResponse } from "next/server";
 
+async function extractText(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  const name = file.name.toLowerCase();
+  const type = file.type;
+
+  // Plain text
+  if (type === "text/plain" || name.endsWith(".txt")) {
+    return buffer.toString("utf-8").slice(0, 50000);
+  }
+
+  // PDF cu pdf-parse
+  if (type === "application/pdf" || name.endsWith(".pdf")) {
+    try {
+      const pdfParse = (await import("pdf-parse")).default;
+      const data = await pdfParse(buffer);
+      return data.text.slice(0, 50000);
+    } catch (e) {
+      console.error("PDF parse error:", e);
+      return `[Document PDF: "${file.name}"]`;
+    }
+  }
+
+  // DOCX cu mammoth
+  if (
+    name.endsWith(".docx") ||
+    type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    try {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value.slice(0, 50000);
+    } catch (e) {
+      console.error("DOCX parse error:", e);
+      return `[Document Word: "${file.name}"]`;
+    }
+  }
+
+  // Imagini - nu le mai trimitem ca imagine! Returnăm un placeholder
+  // și îi spunem AI-ului să genereze pe baza numelui fișierului
+  if (type.startsWith("image/")) {
+    return `[Imagine: "${file.name}". Generează întrebări relevante pentru BAC pe baza numelui fișierului.]`;
+  }
+
+  // Fallback
+  return `[Fișier: "${file.name}" de tip ${type || "necunoscut"}]`;
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -13,15 +61,10 @@ export async function POST(req: Request) {
     const numQuestions =
       difficulty === "easy" ? 5 : difficulty === "medium" ? 10 : 15;
 
-    // Convert file to base64
-    const bytes = await file.arrayBuffer();
-    const base64 = Buffer.from(bytes).toString("base64");
+    // Extragem textul LOCAL - zero tokeni consumați inutil
+    const extractedText = await extractText(file);
 
-    const isImage = file.type.startsWith("image/");
-    const isPdf = file.type === "application/pdf";
-    const isText = file.type === "text/plain" || file.name.endsWith(".txt");
-
-    const promptText = `Ești un profesor expert pentru Bacalaureatul din România. Analizează cu atenție materialul furnizat și generează exact ${numQuestions} întrebări grilă bazate STRICT pe conținutul real al materialului. Întrebările trebuie să verifice înțelegerea informațiilor din material.
+    const systemPrompt = `Ești un profesor expert pentru Bacalaureatul din România. Analizează cu atenție materialul furnizat și generează exact ${numQuestions} întrebări grilă bazate STRICT pe conținutul real al materialului. Întrebările trebuie să verifice înțelegerea informațiilor din material.
 
 Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
 {
@@ -34,51 +77,6 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
     }
   ]
 }`;
-
-    // Build the content array for OpenRouter format
-    let messageContent: any[];
-
-    if (isImage) {
-      // Gemini supports base64 images inline
-      const mediaType = file.type as string;
-      messageContent = [
-        {
-          type: "text",
-          text: promptText,
-        },
-        {
-          type: "image_url",
-          image_url: {
-            url: `data:${mediaType};base64,${base64}`,
-          },
-        },
-      ];
-    } else if (isPdf) {
-      // For PDFs, send as text context since Gemini doesn't support PDF directly via standard vision
-      // We extract info and format it
-      messageContent = [
-        {
-          type: "text",
-          text: `${promptText}\n\nAm primit un document PDF cu numele "${file.name}" care conține material educațional pentru BAC. Generează întrebări bazate pe numele fișierului și pe contextul educațional românesc.`,
-        },
-      ];
-    } else if (isText) {
-      const textContent = Buffer.from(bytes).toString("utf-8").slice(0, 50000);
-      messageContent = [
-        {
-          type: "text",
-          text: `${promptText}\n\nIată conținutul materialului:\n\n${textContent}`,
-        },
-      ];
-    } else {
-      // DOC/DOCX and other formats
-      messageContent = [
-        {
-          type: "text",
-          text: `Ești un profesor expert pentru Bacalaureatul din România.\n\nAm primit un fișier de tip ${file.type || "necunoscut"} cu numele "${file.name}", al cărui conținut nu poate fi citit direct. Generează exact ${numQuestions} întrebări grilă relevante pentru BAC România, pe tema sugerată de numele fișierului.\n\nRăspunde DOAR cu JSON valid, fără text în afară, fără backticks:\n{\n  "questions": [\n    {\n      "question": "textul întrebării",\n      "options": { "A": "varianta A", "B": "varianta B", "C": "varianta C", "D": "varianta D" },\n      "correct": "A",\n      "explanation": "explicație clară de ce răspunsul este corect"\n    }\n  ]\n}`,
-        },
-      ];
-    }
 
     const MODELS = [
       "google/gemini-2.5-flash",
@@ -102,7 +100,10 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
           model,
           max_tokens: 4000,
           messages: [
-            { role: "user", content: messageContent },
+            {
+              role: "user",
+              content: `${systemPrompt}\n\nIată conținutul materialului:\n\n${extractedText}`,
+            },
           ],
         }),
       });
@@ -128,22 +129,17 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
     let questions;
     try {
       const clean = text.replace(/```json|```/g, "").trim();
-      // Try to fix truncated JSON - find last complete question object
       let cleanJson = clean;
-      // Remove trailing incomplete content after the last complete question
       const lastCloseBrace = cleanJson.lastIndexOf("}");
       if (lastCloseBrace > 0) {
         const lastArrayClose = cleanJson.lastIndexOf("]");
         if (lastArrayClose < 0 || lastArrayClose < lastCloseBrace) {
-          // The JSON is truncated mid-array - append closing bracket
           cleanJson = cleanJson.substring(0, lastCloseBrace + 1) + "]";
         }
-        // Reconstruct full JSON object
         const questionsStart = cleanJson.indexOf('"questions"');
         if (questionsStart >= 0) {
           cleanJson = cleanJson.substring(questionsStart - 1);
           cleanJson = "{" + cleanJson;
-          // Fix if the outer object is also truncated
           if (!cleanJson.endsWith("}")) {
             cleanJson = cleanJson.substring(0, cleanJson.lastIndexOf("}") + 1);
           }
@@ -153,11 +149,10 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
       questions = parsed.questions;
     } catch (e) {
       console.error("JSON parse error:", e, "Raw text:", text.substring(0, 500));
-      // If we have at least some questions in the raw text, try to extract manually
       try {
         const matches = text.match(/\{\s*"question"\s*:\s*"([^"]*)"[^}]*\}/g);
         if (matches && matches.length > 0) {
-          questions = matches.map((q: string, i: number) => {
+          questions = matches.map((q: string) => {
             const qMatch = q.match(/"question"\s*:\s*"([^"]*)"/);
             const aMatch = q.match(/"A"\s*:\s*"([^"]*)"/);
             const bMatch = q.match(/"B"\s*:\s*"([^"]*)"/);
@@ -175,7 +170,7 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
           }).filter(Boolean);
         }
         if (!questions || questions.length === 0) throw e;
-      } catch (e2) {
+      } catch {
         return NextResponse.json(
           { error: "AI response could not be parsed" },
           { status: 500 }
@@ -183,7 +178,6 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
       }
     }
 
-    // Format questions to match app format (UI expects `answers` array + numeric `correct` index)
     const formattedQuestions = questions.map((q: any, index: number) => ({
       id: `doc_${Date.now()}_${index}`,
       question: q.question,
