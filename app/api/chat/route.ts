@@ -42,9 +42,9 @@ Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
     }
 
     const MODELS = [
-      "google/gemini-2.5-flash-001",
+      "google/gemini-2.5-flash",
       "openai/gpt-4o-mini",
-      "google/gemini-2.0-flash-001",
+      "google/gemini-2.5-flash-lite",
     ];
 
     let lastError = "";

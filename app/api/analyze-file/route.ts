@@ -81,9 +81,9 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
     }
 
     const MODELS = [
-      "google/gemini-2.5-flash-001",
+      "google/gemini-2.5-flash",
       "openai/gpt-4o-mini",
-      "google/gemini-2.0-flash-001",
+      "google/gemini-2.5-flash-lite",
     ];
 
     let lastError = "";
