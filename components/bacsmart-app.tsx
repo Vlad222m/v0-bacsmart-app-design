@@ -60,10 +60,30 @@ export default function BACsmartApp() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showAuthScreen, setShowAuthScreen] = useState(true);
 
-  const [dailyUsage, setDailyUsage] = useState<{ chat: number; answers: number; summaries: number; quizzes: number }>({ chat: 0, answers: 0, summaries: 0, quizzes: 0 });
+  const [dailyUsage, setDailyUsage] = useState<{ chat: number; answers: number; summaries: number; quizzes: number }>(() => {
+    try {
+      const saved = localStorage.getItem("bacsmart_daily_usage");
+      const today = new Date().toISOString().split("T")[0];
+      const savedDate = localStorage.getItem("bacsmart_daily_usage_date");
+      // If saved date is not today, reset
+      if (saved && savedDate === today) return JSON.parse(saved);
+    } catch {}
+    return { chat: 0, answers: 0, summaries: 0, quizzes: 0 };
+  });
+
+  const persistDailyUsage = (usage: { chat: number; answers: number; summaries: number; quizzes: number }) => {
+    try {
+      localStorage.setItem("bacsmart_daily_usage", JSON.stringify(usage));
+      localStorage.setItem("bacsmart_daily_usage_date", new Date().toISOString().split("T")[0]);
+    } catch {}
+  };
 
   const incrementLocalUsage = (field: "chat" | "answers" | "summaries" | "quizzes") => {
-    setDailyUsage((prev) => ({ ...prev, [field]: prev[field] + 1 }));
+    setDailyUsage((prev) => {
+      const updated = { ...prev, [field]: prev[field] + 1 };
+      persistDailyUsage(updated);
+      return updated;
+    });
   };
 
   const [activeTab, setActiveTab] = useState<Tab>("home");
@@ -258,15 +278,19 @@ export default function BACsmartApp() {
         } catch {}
       }
 
-      // Load daily usage for free tier limits
+      // Load daily usage for free tier limits — DB first, fallback localStorage
       try {
         const usage = await getDailyUsage(userId);
-        setDailyUsage({
-          chat: usage?.chat_count || 0,
-          answers: usage?.answer_count || 0,
-          summaries: usage?.summary_count || 0,
-          quizzes: usage?.quiz_count || 0,
-        });
+        if (usage) {
+          const dbUsage = {
+            chat: usage.chat_count || 0,
+            answers: usage.answer_count || 0,
+            summaries: usage.summary_count || 0,
+            quizzes: usage.quiz_count || 0,
+          };
+          setDailyUsage(dbUsage);
+          persistDailyUsage(dbUsage);
+        }
       } catch {}
 
       const summaries = await getSummaries(userId);
