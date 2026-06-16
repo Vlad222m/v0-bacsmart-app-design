@@ -105,7 +105,13 @@ export default function BACsmartApp() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [testSubjectFilter, setTestSubjectFilter] = useState("Toate");
-  const [subjectScores, setSubjectScores] = useState<SubjectScores>({});
+  // Load saved scores from localStorage on mount
+  const [subjectScores, setSubjectScores] = useState<SubjectScores>(() => {
+    try {
+      const saved = localStorage.getItem("bacsmart_scores");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
 
   const [showDocumentQuizUpload, setShowDocumentQuizUpload] = useState(false);
   const [documentQuizFile, setDocumentQuizFile] = useState<File | null>(null);
@@ -186,13 +192,41 @@ export default function BACsmartApp() {
         }
       }
 
+      // Load scores: DB first, fallback to localStorage
       const scores = await getAggregatedScores(userId);
-      setSubjectScores(scores);
+      if (Object.keys(scores).length > 0) {
+        setSubjectScores(scores);
+        try { localStorage.setItem("bacsmart_scores", JSON.stringify(scores)); } catch {}
+      } else {
+        try {
+          const localScores = localStorage.getItem("bacsmart_scores");
+          if (localScores) setSubjectScores(JSON.parse(localScores));
+        } catch {}
+      }
+
+      // Load progress: DB first, fallback to localStorage
       const progress = await getSubjectProgress(userId);
-      const updatedSubjects = subjects.map((s) => {
-        const saved = progress.find((p) => p.subject === s.name);
-        return saved ? { ...s, progress: saved.progress } : s;
-      });
+      let updatedSubjects: typeof subjects;
+      if (progress.length > 0) {
+        updatedSubjects = subjects.map((s) => {
+          const saved = progress.find((p) => p.subject === s.name);
+          return saved ? { ...s, progress: saved.progress } : s;
+        });
+        try { localStorage.setItem("bacsmart_progress", JSON.stringify(updatedSubjects.map((s) => ({ name: s.name, progress: s.progress })))); } catch {}
+      } else {
+        try {
+          const localProgress = localStorage.getItem("bacsmart_progress");
+          if (localProgress) {
+            const parsed = JSON.parse(localProgress);
+            updatedSubjects = subjects.map((s) => {
+              const found = parsed.find((p: { name: string; progress: number }) => p.name === s.name);
+              return found ? { ...s, progress: found.progress } : s;
+            });
+          } else {
+            updatedSubjects = subjects;
+          }
+        } catch { updatedSubjects = subjects; }
+      }
 
       // Filter subjects based on BAC preferences
       if (bacSubjects && bacSubjects.length > 0) {
@@ -209,7 +243,15 @@ export default function BACsmartApp() {
       }
 
       const quizzes = await getQuizzes(userId);
-      if (quizzes.length > 0) setSavedQuizzes(quizzes);
+      if (quizzes.length > 0) {
+        setSavedQuizzes(quizzes);
+        try { localStorage.setItem("bacsmart_quizzes", JSON.stringify(quizzes)); } catch {}
+      } else {
+        try {
+          const localQuizzes = localStorage.getItem("bacsmart_quizzes");
+          if (localQuizzes) setSavedQuizzes(JSON.parse(localQuizzes));
+        } catch {}
+      }
 
       const summaries = await getSummaries(userId);
       if (summaries.length > 0) {
@@ -339,12 +381,16 @@ export default function BACsmartApp() {
       [question.subject]: { correct: (subjectScores[question.subject]?.correct || 0) + (isCorrect ? 1 : 0), total: (subjectScores[question.subject]?.total || 0) + 1 },
     };
     setSubjectScores(updatedScores);
-    if (authUser) { try { await saveTestScore(authUser.id, question.subject, isCorrect ? 1 : 0, 1); } catch (error) { console.error("Error saving test score:", error); } }
+    // Persist to localStorage
+    try { localStorage.setItem("bacsmart_scores", JSON.stringify(updatedScores)); } catch {}
+    if (authUser) { try { await saveTestScore(authUser.id, question.subject, isCorrect ? 1 : 0, 1); } catch (e) { console.error("DB saveTestScore error:", e); } }
     // Update progress bar based on actual accuracy
     const subjScore = updatedScores[question.subject];
     const newProgress = subjScore.total > 0 ? Math.round((subjScore.correct / subjScore.total) * 100) : 0;
     setSubjectsState((prev) => prev.map((s) => s.name === question.subject ? { ...s, progress: newProgress } : s));
-    if (authUser) { try { await saveSubjectProgress(authUser.id, question.subject, newProgress); } catch (error) { console.error("Error saving progress:", error); } }
+    // Persist progress to localStorage
+    try { localStorage.setItem("bacsmart_progress", JSON.stringify(subjectsState.map((s) => ({ name: s.name, progress: s.name === question.subject ? newProgress : s.progress })))); } catch {}
+    if (authUser) { try { await saveSubjectProgress(authUser.id, question.subject, newProgress); } catch (e) { console.error("DB saveSubjectProgress error:", e); } }
   };
 
   const nextQuestion = () => {
@@ -486,6 +532,8 @@ export default function BACsmartApp() {
       fileName: documentQuizFile.name,
     };
     setSavedQuizzes((prev) => [quizData as SavedQuiz, ...prev]);
+    // Persist to localStorage
+    try { localStorage.setItem("bacsmart_quizzes", JSON.stringify([quizData as SavedQuiz, ...savedQuizzes])); } catch {}
     if (authUser) {
       try {
         const dbQuiz = await saveQuiz(authUser.id, title, documentQuizFile.name, docQuizDifficulty, generatedQuizQuestions, docQuizScore, generatedQuizQuestions.length);
