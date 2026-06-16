@@ -62,8 +62,15 @@ export interface Summary {
 }
 
 // Helper to make API calls with auth token automatically attached
-export const apiFetch = (url: string, options: RequestInit = {}): Promise<Response> => {
-  const token = getSessionTokenSync();
+export const apiFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  let token = getSessionTokenSync();
+  // If sync didn't find it, try async (supabase client session)
+  if (!token && supabase) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      token = data.session?.access_token || null;
+    } catch {}
+  }
   const headers = new Headers(options.headers || {});
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -380,25 +387,45 @@ export const getSessionToken = async (): Promise<string | null> => {
 // Use this for fetch headers where async adds complexity
 export const getSessionTokenSync = (): string | null => {
   try {
-    // Try @supabase/ssr format first
-    const val = localStorage.getItem("supabase.auth.token");
-    if (val) {
-      const parsed = JSON.parse(val);
-      const currentKey = parsed?.currentKey || Object.keys(parsed || {}).find(k => k !== "currentKey");
-      if (currentKey && parsed[currentKey]?.access_token) {
-        return parsed[currentKey].access_token;
-      }
-    }
-    // Fallback: scan for sb-* tokens
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
-        const parsed = JSON.parse(localStorage.getItem(key) || "{}");
+    // Supabase v2 SSR stores token in supabase.auth.token
+    const ssrVal = localStorage.getItem("supabase.auth.token");
+    if (ssrVal) {
+      try {
+        const parsed = JSON.parse(ssrVal);
+        // Newer format: { currentKey: "...", key: { ...access_token... } }
+        const currentKey = parsed?.currentKey;
+        if (currentKey && parsed[currentKey]?.access_token) {
+          return parsed[currentKey].access_token;
+        }
+        // Older format in the same key
         if (parsed?.access_token) return parsed.access_token;
+      } catch {}
+    }
+    // Scan ALL localStorage keys for Supabase tokens
+    const keys = Object.keys(localStorage);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      if (key.includes("auth") && key.includes("token")) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) continue;
+          // Try JSON format (sb-*-auth-token stores {access_token, ...})
+          if (key.endsWith("-auth-token")) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.access_token) return parsed.access_token;
+          }
+          // Try plain token string
+          if (raw.startsWith("ey")) return raw; // JWT starts with ey
+        } catch {}
       }
     }
-    // Fallback: try direct supabase key
-    const direct = localStorage.getItem("sb-access-token");
-    if (direct) return direct;
+    // Last resort: scan everything for JWT-like strings
+    for (let i = 0; i < keys.length; i++) {
+      try {
+        const raw = localStorage.getItem(keys[i]);
+        if (raw && raw.startsWith("ey") && raw.includes(".")) return raw;
+      } catch {}
+    }
   } catch {}
   return null;
 };

@@ -56,6 +56,15 @@ export async function requireAuth(req: Request): Promise<
   }
 
   if (!token) {
+    const cookieHeader = req.headers.get("cookie") || "";
+    // Debug: show what cookies we received
+    console.error("[requireAuth] No token found. Auth header:", authHeader ? "present" : "missing", "Cookie header present:", cookieHeader ? "yes" : "no", "Cookie length:", cookieHeader.length);
+    const sbMatch = cookieHeader.match(/sb-[a-z0-9-]+-auth-token[^=]*=([^;]+)/);
+    console.error("[requireAuth] sb-cookie regex match:", sbMatch ? "found" : "not found");
+    if (sbMatch) console.error("[requireAuth] sb-cookie value length:", sbMatch[1].length, "starts with:", sbMatch[1].substring(0, 20));
+    // List cookie names
+    const cookieNames = cookieHeader.split(";").map(c => c.split("=")[0]?.trim()).filter(Boolean);
+    console.error("[requireAuth] Cookie names:", JSON.stringify(cookieNames));
     return NextResponse.json(
       { error: "Unauthorized — no session" },
       { status: 401 }
