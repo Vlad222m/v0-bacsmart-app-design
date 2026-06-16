@@ -235,9 +235,10 @@ export default function ChatTab({
           {chatLimitReached ? (
             <button
               onClick={onGoPremium}
-              className="flex-1 flex items-center justify-center gap-2 bg-primary/10 rounded-xl px-4 py-3 border border-primary/30 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2.5 bg-primary/10 rounded-xl px-4 py-3.5 border border-primary/30 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
             >
-              <Crown className="w-4 h-4" /> Upgrade la Premium pentru mesaje nelimitate
+              <Crown className="w-5 h-5 shrink-0" />
+              <span>Upgrade la Premium pentru mesaje nelimitate</span>
             </button>
           ) : (
             <input

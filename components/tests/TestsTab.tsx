@@ -252,9 +252,10 @@ export default function TestsTab({
       {answersLimitReached && !showResult ? (
         <button
           onClick={onGoPremium}
-          className="w-full py-3 rounded-xl font-medium bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3.5 rounded-xl font-medium bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-colors flex items-center justify-center gap-2.5"
         >
-          <Crown className="w-4 h-4" /> Upgrade la Premium pentru răspunsuri nelimitate
+          <Crown className="w-5 h-5 shrink-0" />
+          <span className="text-sm">Upgrade la Premium pentru răspunsuri nelimitate</span>
         </button>
       ) : !showResult ? (
         <button
