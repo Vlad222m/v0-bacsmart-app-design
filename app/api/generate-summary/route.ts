@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { checkFreeLimit, incrementUsage } from "@/lib/api-auth";
 
 export const maxDuration = 60;
 const MAX_TEXT_INPUT = 30000; // Limita de text trimis la API
@@ -75,8 +75,8 @@ async function extractText(file: File): Promise<string> {
 
 export async function POST(req: Request) {
   try {
-    // Verify authentication
-    const auth = await requireAuth(req);
+    // Verify free tier limit
+    const auth = await checkFreeLimit(req, "summaries");
     if (auth instanceof NextResponse) return auth;
 
     const formData = await req.formData();
@@ -164,6 +164,9 @@ export async function POST(req: Request) {
         questions: ["Întrebare 1", "Întrebare 2", "Întrebare 3"],
       };
     }
+
+    // Increment usage counter for free tier tracking
+    await incrementUsage(auth.userId, "summaries").catch(() => {});
 
     return NextResponse.json({
       fileName: (file.name || "").replace(/[<>&"']/g, ""),

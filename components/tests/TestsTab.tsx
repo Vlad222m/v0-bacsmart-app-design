@@ -19,6 +19,9 @@ interface TestsTabProps {
   onOpenDocumentQuiz: () => void;
   onSavedQuizzes: () => void;
   savedQuizCount: number;
+  currentPlan?: string;
+  dailyAnswersUsage?: number;
+  dailyQuizzesUsage?: number;
 }
 
 export default function TestsTab({
@@ -37,8 +40,17 @@ export default function TestsTab({
   onOpenDocumentQuiz,
   onSavedQuizzes,
   savedQuizCount,
+  currentPlan,
+  dailyAnswersUsage = 0,
+  dailyQuizzesUsage = 0,
 }: TestsTabProps) {
   const answerLabels = ["A", "B", "C", "D"];
+
+  const isFree = currentPlan === "free";
+  const answersRemaining = isFree ? Math.max(0, 10 - dailyAnswersUsage) : null;
+  const answersLimitReached = isFree && dailyAnswersUsage >= 10;
+  const quizzesRemaining = isFree ? Math.max(0, 1 - dailyQuizzesUsage) : null;
+  const quizzesLimitReached = isFree && dailyQuizzesUsage >= 1;
 
   if (!currentQuestion) {
     return (
@@ -67,11 +79,19 @@ export default function TestsTab({
         </div>
       </div>
 
+      {/* Quiz limit banner */}
+      {isFree && quizzesLimitReached && (
+        <div className="bg-error/10 border border-error/30 rounded-xl px-4 py-2.5 text-xs text-muted-foreground text-center">
+          Ai atins limita zilnică de 1 quiz. <span className="text-primary font-medium">Upgrade la Premium</span> pentru quiz-uri nelimitate.
+        </div>
+      )}
+
       {/* Quiz Buttons */}
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onOpenDocumentQuiz}
-          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-primary/20 to-primary/5 text-primary hover:from-primary/30 hover:to-primary/10 border border-primary/20 hover:border-primary/40 transition-all duration-200 flex items-center justify-center gap-2.5 overflow-hidden"
+          disabled={quizzesLimitReached}
+          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-primary/20 to-primary/5 text-primary hover:from-primary/30 hover:to-primary/10 border border-primary/20 hover:border-primary/40 transition-all duration-200 flex items-center justify-center gap-2.5 overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
@@ -222,16 +242,25 @@ export default function TestsTab({
         </div>
       )}
 
+      {/* Answers remaining indicator */}
+      {isFree && (
+        <div className="text-[11px] text-muted-foreground text-center">
+          {answersLimitReached
+            ? "Ai atins limita zilnică de 10 răspunsuri"
+            : `${answersRemaining}/10 răspunsuri disponibile azi`}
+        </div>
+      )}
+
       {/* Action Button */}
       {!showResult ? (
         <button
           onClick={handleAnswerSubmit}
-          disabled={selectedAnswer === null}
+          disabled={selectedAnswer === null || answersLimitReached}
           className={`w-full py-3 rounded-xl font-medium transition-all ${
             selectedAnswer !== null ? "bg-primary text-primary-foreground hover:opacity-90" : "bg-muted text-muted-foreground cursor-not-allowed"
           }`}
         >
-          Verifica Raspunsul
+          {answersLimitReached ? "Limită atinsă — Upgrade" : "Verifica Raspunsul"}
         </button>
       ) : (
         <button

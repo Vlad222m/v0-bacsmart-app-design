@@ -353,6 +353,76 @@ export const resetUserProgress = async (userId: string) => {
   await supabase.from("profiles").update({ streak_days: 0, total_study_hours: 0 }).eq("id", userId)
 }
 
+// Daily usage tracking for free tier limits
+export interface DailyUsage {
+  chat_count: number
+  answer_count: number
+  summary_count: number
+  quiz_count: number
+}
+
+export const getDailyUsage = async (userId: string): Promise<DailyUsage | null> => {
+  if (!supabase) return null
+  const today = new Date().toISOString().split("T")[0]
+  const { data, error } = await supabase
+    .from("daily_usage")
+    .select("chat_count, answer_count, summary_count, quiz_count")
+    .eq("user_id", userId)
+    .eq("date", today)
+    .maybeSingle()
+  if (error) console.error("Error getting daily usage:", error)
+  return data as DailyUsage | null
+}
+
+export const incrementDailyUsage = async (userId: string, field: "chat_count" | "answer_count" | "summary_count" | "quiz_count") => {
+  if (!supabase) return
+  const today = new Date().toISOString().split("T")[0]
+  // Upsert: increment the field, or insert with 1 if doesn't exist
+  const { data: existing } = await supabase
+    .from("daily_usage")
+    .select("id, chat_count, answer_count, summary_count, quiz_count")
+    .eq("user_id", userId)
+    .eq("date", today)
+    .maybeSingle()
+
+  if (existing) {
+    const updates: Record<string, number> = {}
+    updates[field] = (existing[field as keyof typeof existing] as number || 0) + 1
+    await supabase
+      .from("daily_usage")
+      .update(updates)
+      .eq("id", existing.id)
+  } else {
+    const insert: Record<string, any> = {
+      user_id: userId,
+      date: today,
+      chat_count: 0,
+      answer_count: 0,
+      summary_count: 0,
+      quiz_count: 0,
+    }
+    insert[field] = 1
+    await supabase
+      .from("daily_usage")
+      .insert(insert)
+  }
+}
+
+export const updateProfilePlan = async (userId: string, plan: "free" | "premium" | "annual", trialEndsAt?: string | null, premiumUntil?: string | null) => {
+  if (!supabase) return null
+  const updates: Record<string, any> = { current_plan: plan }
+  if (trialEndsAt !== undefined) updates.trial_ends_at = trialEndsAt
+  if (premiumUntil !== undefined) updates.premium_until = premiumUntil
+  const { data, error } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", userId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as UserProfile
+}
+
 // Get current session access token for API auth headers
 export const getSessionToken = async (): Promise<string | null> => {
   // Try localStorage first (works even before supabase client is ready)

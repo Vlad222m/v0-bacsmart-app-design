@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { checkFreeLimit, incrementUsage } from "@/lib/api-auth";
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
-    // Verify authentication
-    const auth = await requireAuth(req);
+    // Verify authentication + free tier limit
+    const auth = await checkFreeLimit(req, "chat");
     if (auth instanceof NextResponse) return auth;
 
     const { subject, messages } = await req.json();
@@ -110,6 +110,9 @@ export async function POST(req: Request) {
     }
 
     const text = data.choices?.[0]?.message?.content || "Ne pare rău, nu am putut genera un răspuns.";
+
+    // Increment usage counter for free tier tracking
+    await incrementUsage(auth.userId, "chat").catch(() => {});
 
     return NextResponse.json({ reply: text });
   } catch (error) {

@@ -10,11 +10,13 @@ create table if not exists public.profiles (
   email text not null,
   full_name text,
   avatar_url text,
-  current_plan text default 'free' check (current_plan in ('free', 'premium')),
+  current_plan text default 'free' check (current_plan in ('free', 'premium', 'annual')),
   streak_days integer default 0,
   total_study_hours numeric default 0,
   bac_profile text,
   selected_subjects jsonb default '[]'::jsonb,
+  trial_ends_at timestamp with time zone,
+  premium_until timestamp with time zone,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -75,6 +77,18 @@ create table if not exists public.quizzes (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Daily usage tracking for free tier limits
+create table if not exists public.daily_usage (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  date date not null default current_date,
+  chat_count integer default 0,
+  answer_count integer default 0,
+  summary_count integer default 0,
+  quiz_count integer default 0,
+  unique(user_id, date)
+);
+
 -- Enable Row Level Security (RLS)
 alter table public.profiles enable row level security;
 alter table public.chat_messages enable row level security;
@@ -82,6 +96,7 @@ alter table public.test_scores enable row level security;
 alter table public.subject_progress enable row level security;
 alter table public.summaries enable row level security;
 alter table public.quizzes enable row level security;
+alter table public.daily_usage enable row level security;
 
 -- Profiles policies
 create policy "Users can view own profile"
@@ -166,6 +181,19 @@ create policy "Users can delete own quizzes"
   on public.quizzes for delete
   using (auth.uid() = user_id);
 
+-- Daily usage policies
+create policy "Users can view own daily usage"
+  on public.daily_usage for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own daily usage"
+  on public.daily_usage for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own daily usage"
+  on public.daily_usage for update
+  using (auth.uid() = user_id);
+
 -- Function to handle new user signup
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -190,3 +218,5 @@ create index if not exists test_scores_subject_idx on public.test_scores(subject
 create index if not exists subject_progress_user_id_idx on public.subject_progress(user_id);
 create index if not exists summaries_user_id_idx on public.summaries(user_id);
 create index if not exists quizzes_user_id_idx on public.quizzes(user_id);
+create index if not exists daily_usage_user_id_idx on public.daily_usage(user_id);
+create index if not exists daily_usage_date_idx on public.daily_usage(date);

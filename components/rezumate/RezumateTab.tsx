@@ -15,6 +15,8 @@ interface RezumateTabProps {
   onSaveSummary: () => void;
   onDeleteSummary: (id: number) => void;
   showToastMessage: (msg: string) => void;
+  currentPlan?: string;
+  dailySummaryUsage?: number;
 }
 
 export default function RezumateTab({
@@ -28,6 +30,8 @@ export default function RezumateTab({
   onSaveSummary,
   onDeleteSummary,
   showToastMessage,
+  currentPlan,
+  dailySummaryUsage = 0,
 }: RezumateTabProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -37,6 +41,9 @@ export default function RezumateTab({
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
   const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
   const ALLOWED_DOC_EXTENSIONS = [".pdf", ".doc", ".docx", ".txt"];
+  const isFree = currentPlan === "free";
+  const summaryLimitReached = isFree && dailySummaryUsage >= 1;
+  const summaryRemaining = isFree ? Math.max(0, 1 - dailySummaryUsage) : null;
 
   const validateFile = (file: File, isImage: boolean): boolean => {
     if (file.size > MAX_FILE_SIZE) {
@@ -179,9 +186,22 @@ export default function RezumateTab({
             </div>
           )}
 
+          {/* Usage remaining */}
+          {isFree && (
+            <div className="text-xs text-muted-foreground text-center">
+              {summaryLimitReached
+                ? "Ai atins limita zilnică de 1 rezumat"
+                : `${summaryRemaining}/1 rezumat disponibil azi`}
+            </div>
+          )}
+
           {/* Generate Button */}
           {uploadedFile && !isGenerating && (
-            <button onClick={onGenerate} className="w-full py-3.5 rounded-xl font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+            <button
+              onClick={onGenerate}
+              disabled={summaryLimitReached}
+              className="w-full py-3.5 rounded-xl font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Zap className="w-5 h-5" /> Genereaza rezumat
             </button>
           )}

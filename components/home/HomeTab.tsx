@@ -49,6 +49,7 @@ interface HomeTabProps {
   onLogoutClick: () => void;
   onHelpClick: () => void;
   onNotificationsClick: () => void;
+  dailyUsage?: { chat: number; answers: number; summaries: number; quizzes: number };
 }
 
 export default function HomeTab({
@@ -65,6 +66,7 @@ export default function HomeTab({
   onLogoutClick,
   onHelpClick,
   onNotificationsClick,
+  dailyUsage,
 }: HomeTabProps) {
   const firstName = userProfile?.full_name?.split(" ")[0] || "Elev";
   const initials = userProfile?.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
@@ -199,6 +201,46 @@ export default function HomeTab({
         </div>
       </div>
 
+      {/* Usage Remaining (free tier) */}
+      {currentPlan === "free" && dailyUsage && (
+        <div className="bg-card rounded-2xl p-4 border border-border">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
+              Limita zilnică
+            </h3>
+            <button onClick={onPremiumClick} className="text-[10px] text-primary font-medium hover:underline">
+              Upgrade →
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-muted/50 rounded-lg px-3 py-2">
+              <p className="text-xs text-muted-foreground">Chat AI</p>
+              <p className="text-sm font-bold text-foreground">
+                {Math.max(0, 10 - dailyUsage.chat)}/<span className="text-muted-foreground">10</span>
+              </p>
+            </div>
+            <div className="bg-muted/50 rounded-lg px-3 py-2">
+              <p className="text-xs text-muted-foreground">Teste</p>
+              <p className="text-sm font-bold text-foreground">
+                {Math.max(0, 10 - dailyUsage.answers)}/<span className="text-muted-foreground">10</span>
+              </p>
+            </div>
+            <div className="bg-muted/50 rounded-lg px-3 py-2">
+              <p className="text-xs text-muted-foreground">Rezumate</p>
+              <p className="text-sm font-bold text-foreground">
+                {Math.max(0, 1 - dailyUsage.summaries)}/<span className="text-muted-foreground">1</span>
+              </p>
+            </div>
+            <div className="bg-muted/50 rounded-lg px-3 py-2">
+              <p className="text-xs text-muted-foreground">Quiz-uri</p>
+              <p className="text-sm font-bold text-foreground">
+                {Math.max(0, 1 - dailyUsage.quizzes)}/<span className="text-muted-foreground">1</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Freemium Alert */}
       {currentPlan === "free" && (
         <button onClick={onPremiumClick} className="w-full bg-card rounded-xl p-3 border border-primary/30 flex items-center gap-3 hover:bg-muted/50 transition-colors">
@@ -206,8 +248,8 @@ export default function HomeTab({
             <Crown className="w-4 h-4 text-primary" />
           </div>
           <div className="flex-1 text-left">
-            <p className="text-sm text-foreground font-medium">Upgrade la Premium</p>
-            <p className="text-xs text-muted-foreground">Acces nelimitat la toate functiile</p>
+            <p className="text-sm text-foreground font-medium">Deblochează Premium</p>
+            <p className="text-xs text-muted-foreground">Acces nelimitat — de la 19 lei prima lună</p>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground" />
         </button>

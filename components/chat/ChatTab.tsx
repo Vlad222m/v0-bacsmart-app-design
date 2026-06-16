@@ -13,6 +13,8 @@ interface ChatTabProps {
   setNewMessage: (s: string) => void;
   sendMessage: () => void;
   isTyping: boolean;
+  currentPlan?: string;
+  dailyChatUsage?: number;
 }
 
 const QUICK_QUESTIONS: Record<string, string[]> = {
@@ -36,11 +38,16 @@ export default function ChatTab({
   setNewMessage,
   sendMessage,
   isTyping,
+  currentPlan,
+  dailyChatUsage = 0,
 }: ChatTabProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [showQuickQuestions, setShowQuickQuestions] = useState(true);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, "up" | "down" | null>>({});
+  const isFree = currentPlan === "free";
+  const chatLimitReached = isFree && dailyChatUsage >= 10;
+  const chatRemaining = isFree ? Math.max(0, 10 - dailyChatUsage) : null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -80,7 +87,11 @@ export default function ChatTab({
           </h2>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-xs text-muted-foreground">Online - Mesaje nelimitate</span>
+            <span className="text-xs text-muted-foreground">
+              {isFree
+                ? `${chatRemaining}/10 mesaje azi`
+                : "Mesaje nelimitate"}
+            </span>
           </div>
         </div>
         {/* Clear chat button */}
@@ -218,18 +229,27 @@ export default function ChatTab({
       {/* Input Bar */}
       <div className="absolute bottom-0 left-0 right-0 bg-background pt-2 pb-1">
         <div className="flex gap-2">
-          <input
-            id="chat-input"
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder={`Intreaba despre ${selectedSubject.name}...`}
-            className="flex-1 bg-card border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          />
+          {chatLimitReached ? (
+            <div className="flex-1 flex items-center gap-2 bg-error/10 rounded-xl px-4 py-3 border border-error/30">
+              <p className="text-xs text-muted-foreground flex-1">Ai atins limita zilnică de 10 mesaje</p>
+              <button onClick={() => {}} className="text-[10px] font-medium text-primary hover:underline shrink-0">
+                Upgrade →
+              </button>
+            </div>
+          ) : (
+            <input
+              id="chat-input"
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              placeholder={`Intreaba despre ${selectedSubject.name}...`}
+              className="flex-1 bg-card border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          )}
           <button
             onClick={sendMessage}
-            disabled={!newMessage.trim() || isTyping}
+            disabled={!newMessage.trim() || isTyping || chatLimitReached}
             className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Send className="w-5 h-5 text-primary-foreground" />

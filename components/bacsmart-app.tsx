@@ -15,7 +15,7 @@ import {
   getSubjectProgress, saveSummary as saveSummaryToDb,
   getSummaries, deleteSummary as deleteSummaryFromDb,
   saveQuiz, getQuizzes, deleteQuiz, saveBacPreferences,
-  resetUserProgress, apiFetch, type UserProfile, type SavedQuiz,
+  resetUserProgress, apiFetch, getDailyUsage, type UserProfile, type SavedQuiz,
 } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -59,6 +59,8 @@ export default function BACsmartApp() {
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showAuthScreen, setShowAuthScreen] = useState(true);
+
+  const [dailyUsage, setDailyUsage] = useState<{ chat: number; answers: number; summaries: number; quizzes: number }>({ chat: 0, answers: 0, summaries: 0, quizzes: 0 });
 
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [selectedSubject, setSelectedSubject] = useState(subjects[0]);
@@ -251,6 +253,17 @@ export default function BACsmartApp() {
           if (localQuizzes) setSavedQuizzes(JSON.parse(localQuizzes));
         } catch {}
       }
+
+      // Load daily usage for free tier limits
+      try {
+        const usage = await getDailyUsage(userId);
+        setDailyUsage({
+          chat: usage?.chat_count || 0,
+          answers: usage?.answer_count || 0,
+          summaries: usage?.summary_count || 0,
+          quizzes: usage?.quiz_count || 0,
+        });
+      } catch {}
 
       const summaries = await getSummaries(userId);
       if (summaries.length > 0) {
@@ -616,14 +629,26 @@ export default function BACsmartApp() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4">
           <div className="bg-card rounded-2xl p-6 max-w-sm w-full border border-border">
             <h3 className="text-xl font-bold text-foreground mb-2" style={{ fontFamily: "var(--font-syne)" }}>
-              {premiumModalType === "monthly" ? "Abonament Premium" : "Abonament Anual"}
+              {premiumModalType === "monthly" ? "Premium Lunar" : "Premium Anual"}
             </h3>
-            <p className="text-muted-foreground mb-4">
-              {premiumModalType === "monthly" ? "49 lei/luna - Acces complet la toate functiile" : "35 lei/luna - Economisesti 180 lei pe an!"}
+            <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 mb-4">
+              <p className="text-sm font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
+                🎁 5 zile trial GRATUIT
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Încearcă gratuit toate funcțiile premium. Anulezi oricând în perioada de trial.
+              </p>
+            </div>
+            <p className="text-muted-foreground text-sm mb-2">
+              {premiumModalType === "monthly"
+                ? "Prima lună doar 19 lei, apoi 49 lei/lună"
+                : "35 lei/lună, facturat anual 420 lei — economisești 168 lei"}
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowPremiumModal(false)} className="flex-1 py-3 rounded-xl font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors">Anuleaza</button>
-              <button onClick={confirmPremium} className="flex-1 py-3 rounded-xl font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">Confirma</button>
+              <button onClick={confirmPremium} className="flex-1 py-3 rounded-xl font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
+                {premiumModalType === "monthly" ? "19 lei/lună" : "35 lei/lună"}
+              </button>
             </div>
           </div>
         </div>
@@ -842,6 +867,7 @@ export default function BACsmartApp() {
                 onLogoutClick={() => { setShowProfileMenu(false); setShowLogoutModal(true); }}
                 onHelpClick={() => { setShowProfileMenu(false); setShowHelpScreen(true); }}
                 onNotificationsClick={() => { setShowProfileMenu(false); setShowNotificationsScreen(true); }}
+                dailyUsage={dailyUsage}
               />
             )}
             {activeTab === "chat" && (
@@ -850,6 +876,7 @@ export default function BACsmartApp() {
                 setSelectedSubject={setSelectedSubject} messages={messages}
                 newMessage={newMessage} setNewMessage={setNewMessage}
                 sendMessage={sendMessage} isTyping={isTyping}
+                currentPlan={currentPlan} dailyChatUsage={dailyUsage.chat}
               />
             )}
             {activeTab === "tests" && (
@@ -863,6 +890,8 @@ export default function BACsmartApp() {
                 totalScore={getTotalScore()} totalQuestions={getFilteredQuestions().length}
                 onOpenDocumentQuiz={() => setShowDocumentQuizUpload(true)}
                 onSavedQuizzes={openSavedQuizList} savedQuizCount={savedQuizzes.length}
+                currentPlan={currentPlan} dailyAnswersUsage={dailyUsage.answers}
+                dailyQuizzesUsage={dailyUsage.quizzes}
               />
             )}
             {activeTab === "rezumate" && (
@@ -872,6 +901,7 @@ export default function BACsmartApp() {
                 generatedSummary={generatedSummary} setGeneratedSummary={setGeneratedSummary}
                 savedSummaries={savedSummaries} onSaveSummary={saveSummary}
                 onDeleteSummary={deleteSummary} showToastMessage={showToastMessage}
+                currentPlan={currentPlan} dailySummaryUsage={dailyUsage.summaries}
               />
             )}
             {activeTab === "progress" && (

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { checkFreeLimit, incrementUsage } from "@/lib/api-auth";
 
 const MAX_TEXT_INPUT = 30000; // Limita de text trimis la API
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -59,8 +59,8 @@ async function extractText(file: File): Promise<string> {
 
 export async function POST(req: Request) {
   try {
-    // Verify authentication
-    const auth = await requireAuth(req);
+    // Verify authentication + free tier limit
+    const auth = await checkFreeLimit(req, "quizzes");
     if (auth instanceof NextResponse) return auth;
 
     const formData = await req.formData();
@@ -201,6 +201,9 @@ export async function POST(req: Request) {
       explanation: q.explanation,
       subject: "Document",
     }));
+
+    // Increment usage counter for free tier tracking
+    await incrementUsage(auth.userId, "quizzes").catch(() => {});
 
     return NextResponse.json({ questions: formattedQuestions });
   } catch (error) {
