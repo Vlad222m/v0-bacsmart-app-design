@@ -44,7 +44,8 @@ export async function requireAuth(req: Request): Promise<
   // If no token in header, try cookie-based session (for same-origin requests)
   if (!token) {
     const cookieHeader = req.headers.get("cookie") || "";
-    const match = cookieHeader.match(/sb-[a-z0-9-]+-auth-token=([^;]+)/);
+    // Match any Supabase auth cookie format: sb-<ref>-auth-token, __Secure-sb-<ref>-auth-token
+    const match = cookieHeader.match(/sb-[a-z0-9-]+-auth-token[^=]*=([^;]+)/);
     if (match) {
       try {
         token = JSON.parse(decodeURIComponent(match[1]))?.access_token || null;

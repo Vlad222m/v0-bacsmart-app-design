@@ -332,6 +332,24 @@ export const resetUserProgress = async (userId: string) => {
   await supabase.from("profiles").update({ streak_days: 0, total_study_hours: 0 }).eq("id", userId)
 }
 
+// Get current session access token for API auth headers
+export const getSessionToken = async (): Promise<string | null> => {
+  if (!supabase) {
+    // Try Supabase localStorage fallback pattern
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
+          const parsed = JSON.parse(localStorage.getItem(key) || "{}");
+          return parsed?.access_token || null;
+        }
+      }
+    } catch {}
+    return null;
+  }
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token || null;
+};
+
 export const saveBacPreferences = async (userId: string, bacProfile: string, selectedSubjects: string[]) => {
   if (!supabase) {
     if (typeof window !== "undefined") {
