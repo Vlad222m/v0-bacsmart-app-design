@@ -178,8 +178,17 @@ export default function BACsmartApp() {
   const [showNotificationsScreen, setShowNotificationsScreen] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
 
-  const [activeSubjects, setActiveSubjects] = useState<string[] | null>(null);
-  const [userBacProfile, setUserBacProfile] = useState<string | null>(null);
+  const [activeSubjects, setActiveSubjects] = useState<string[] | null>(() => {
+    try {
+      const s = localStorage.getItem("selected_subjects");
+      return s ? JSON.parse(s) : null;
+    } catch { return null; }
+  });
+  const [userBacProfile, setUserBacProfile] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("bac_profile");
+    } catch { return null; }
+  });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([
     { id: 1, icon: "🎯", title: "Test completat!", description: "Ai obținut 8/10 la Matematică", time: "acum 2 ore", read: false },
@@ -188,6 +197,13 @@ export default function BACsmartApp() {
     { id: 4, icon: "🏆", title: "Streak 7 zile!", description: "Felicitări! 7 zile consecutive de studiu", time: "acum 2 zile", read: false },
     { id: 5, icon: "📝", title: "Test nou disponibil", description: "20 întrebări noi la Română", time: "acum 3 zile", read: true },
   ]);
+
+  // Apply subject filtering from localStorage on mount
+  useEffect(() => {
+    if (activeSubjects && activeSubjects.length > 0) {
+      setSubjectsState((prev) => prev.filter((s) => activeSubjects.includes(s.name)));
+    }
+  }, []);
 
   // Load user data when auth state changes
   useEffect(() => {
@@ -813,6 +829,9 @@ export default function BACsmartApp() {
           onBacProfileChange={(bacProfile, selectedSubjects) => {
             setUserBacProfile(bacProfile);
             setActiveSubjects(selectedSubjects);
+            // Save to localStorage
+            try { localStorage.setItem("bac_profile", bacProfile); } catch {}
+            try { localStorage.setItem("selected_subjects", JSON.stringify(selectedSubjects)); } catch {}
             if (authUser) {
               saveBacPreferences(authUser.id, bacProfile, selectedSubjects).catch(console.error);
             }
@@ -823,10 +842,8 @@ export default function BACsmartApp() {
             setUserBacProfile(null);
             setActiveSubjects(null);
             setSubjectsState(subjects);
-            if (typeof window !== "undefined") {
-              localStorage.removeItem("bac_profile");
-              localStorage.removeItem("selected_subjects");
-            }
+            try { localStorage.removeItem("bac_profile"); } catch {}
+            try { localStorage.removeItem("selected_subjects"); } catch {}
             if (authUser) {
               saveBacPreferences(authUser.id, "", subjects.map((s) => s.name)).catch(console.error);
             }
