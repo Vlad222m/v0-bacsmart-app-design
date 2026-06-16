@@ -61,6 +61,20 @@ export interface Summary {
   created_at: string
 }
 
+// Helper to make API calls with auth token automatically attached
+export const apiFetch = (url: string, options: RequestInit = {}): Promise<Response> => {
+  const token = getSessionTokenSync();
+  const headers = new Headers(options.headers || {});
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  return fetch(url, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
+};
+
 export interface SavedQuiz {
   id: string
   user_id: string
@@ -359,6 +373,33 @@ export const getSessionToken = async (): Promise<string | null> => {
     if (data.session?.access_token) return data.session.access_token;
   }
 
+  return null;
+};
+
+// Synchronous version - reads token directly from localStorage
+// Use this for fetch headers where async adds complexity
+export const getSessionTokenSync = (): string | null => {
+  try {
+    // Try @supabase/ssr format first
+    const val = localStorage.getItem("supabase.auth.token");
+    if (val) {
+      const parsed = JSON.parse(val);
+      const currentKey = parsed?.currentKey || Object.keys(parsed || {}).find(k => k !== "currentKey");
+      if (currentKey && parsed[currentKey]?.access_token) {
+        return parsed[currentKey].access_token;
+      }
+    }
+    // Fallback: scan for sb-* tokens
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const parsed = JSON.parse(localStorage.getItem(key) || "{}");
+        if (parsed?.access_token) return parsed.access_token;
+      }
+    }
+    // Fallback: try direct supabase key
+    const direct = localStorage.getItem("sb-access-token");
+    if (direct) return direct;
+  } catch {}
   return null;
 };
 

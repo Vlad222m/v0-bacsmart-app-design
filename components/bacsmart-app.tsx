@@ -15,10 +15,9 @@ import {
   getSubjectProgress, saveSummary as saveSummaryToDb,
   getSummaries, deleteSummary as deleteSummaryFromDb,
   saveQuiz, getQuizzes, deleteQuiz, saveBacPreferences,
-  resetUserProgress, type UserProfile, type SavedQuiz,
+  resetUserProgress, apiFetch, type UserProfile, type SavedQuiz,
 } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
-import { getSessionToken } from "@/lib/supabase";
 
 import type { Tab, Message, Subject, GeneratedSummaryData, SubjectScores, NotificationItem } from "@/components/types";
 import HomeTab from "@/components/home/HomeTab";
@@ -353,7 +352,7 @@ export default function BACsmartApp() {
 
     try {
       const conversation = [...messages, userMsg].map((m) => ({ isUser: m.isUser, text: m.text }));
-      const response = await fetch("/api/chat", {
+      const response = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject: selectedSubject.name, messages: conversation }),
@@ -431,12 +430,9 @@ export default function BACsmartApp() {
     if (!uploadedFile) return;
     setIsGenerating(true);
     try {
-      const token = await getSessionToken();
       const formData = new FormData();
       formData.append("file", uploadedFile);
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const response = await fetch("/api/generate-summary", { method: "POST", body: formData, headers, credentials: "include" });
+      const response = await apiFetch("/api/generate-summary", { method: "POST", body: formData });
       const data = await response.json();
       if (!response.ok || !data.summary) throw new Error(data.error || "Failed to generate summary");
       setGeneratedSummary({ fileName: data.fileName || uploadedFile.name, summary: data.summary, keyPoints: data.keyPoints || [], questions: data.questions || [] });
@@ -494,13 +490,10 @@ export default function BACsmartApp() {
     setDocumentQuizFile(file);
     setIsGeneratingQuiz(true);
     try {
-      const token = await getSessionToken();
       const formData = new FormData();
       formData.append("file", file);
       formData.append("difficulty", docQuizDifficulty);
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const response = await fetch("/api/analyze-file", { method: "POST", body: formData, headers, credentials: "include" });
+      const response = await apiFetch("/api/analyze-file", { method: "POST", body: formData });
       const data = await response.json();
       if (!response.ok || !data.questions) throw new Error(data.error || "Failed to generate quiz");
       setGeneratedQuizQuestions(data.questions);
