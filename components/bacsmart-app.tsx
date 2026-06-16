@@ -149,7 +149,12 @@ export default function BACsmartApp() {
   const [docQuizShowResult, setDocQuizShowResult] = useState(false);
   const [docQuizScore, setDocQuizScore] = useState(0);
   const [docQuizDifficulty, setDocQuizDifficulty] = useState<"easy" | "medium" | "hard">("medium");
-  const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([]);
+  const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>(() => {
+    try {
+      const q = localStorage.getItem("bacsmart_quizzes");
+      return q ? JSON.parse(q) : [];
+    } catch { return []; }
+  });
   const [showSavedQuizList, setShowSavedQuizList] = useState(false);
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -157,14 +162,17 @@ export default function BACsmartApp() {
   const [generatedSummary, setGeneratedSummary] = useState<GeneratedSummaryData | null>(null);
   const [savedSummaries, setSavedSummaries] = useState<
     { id: number; title: string; subject: string; date: string; summary: string; keyPoints: string[]; questions: string[] }[]
-  >([
-    {
-      id: 1, title: "Unirea Principatelor", subject: "Istorie", date: "28 Mai 2024",
-      summary: "Unirea Principatelor Romane din 1859 reprezinta un moment crucial in istoria nationala...",
-      keyPoints: ["Alexandru Ioan Cuza ales domn", "Dubla alegere in Moldova si Tara Romaneasca", "Recunoastere internationala"],
-      questions: ["Care a fost semnificatia unirii din 1859?"],
-    },
-  ]);
+  >(() => {
+    try {
+      const s = localStorage.getItem("bacsmart_summaries");
+      return s ? JSON.parse(s) : [{
+        id: 1, title: "Unirea Principatelor", subject: "Istorie", date: "28 Mai 2024",
+        summary: "Unirea Principatelor Romane din 1859 reprezinta un moment crucial in istoria nationala...",
+        keyPoints: ["Alexandru Ioan Cuza ales domn", "Dubla alegere in Moldova si Tara Romaneasca", "Recunoastere internationala"],
+        questions: ["Care a fost semnificatia unirii din 1859?"],
+      }];
+    } catch { return []; }
+  });
 
   const [showHelpScreen, setShowHelpScreen] = useState(false);
   const [showNotificationsScreen, setShowNotificationsScreen] = useState(false);
@@ -295,7 +303,8 @@ export default function BACsmartApp() {
         if (localQuizzes) setSavedQuizzes(JSON.parse(localQuizzes));
       }
 
-      // Load daily usage for free tier limits — DB first, fallback localStorage
+      // Load daily usage — doar daca DB are valori mai mari decat localStorage
+      // (previne suprascrierea cu 0 cand randul DB e proaspat creat dar actiunile sunt doar locale)
       try {
         const usage = await getDailyUsage(userId);
         if (usage) {
@@ -305,19 +314,31 @@ export default function BACsmartApp() {
             summaries: usage.summary_count || 0,
             quizzes: usage.quiz_count || 0,
           };
-          setDailyUsage(dbUsage);
-          persistDailyUsage(dbUsage);
+          setDailyUsage((prev) => {
+            const merged = {
+              chat: Math.max(prev.chat, dbUsage.chat),
+              answers: Math.max(prev.answers, dbUsage.answers),
+              summaries: Math.max(prev.summaries, dbUsage.summaries),
+              quizzes: Math.max(prev.quizzes, dbUsage.quizzes),
+            };
+            persistDailyUsage(merged);
+            return merged;
+          });
         }
       } catch {}
 
-      const summaries = await getSummaries(userId);
-      if (summaries.length > 0) {
-        setSavedSummaries(summaries.map((s, i) => ({
-          id: i + 1, title: s.title, subject: s.subject,
-          date: new Date(s.created_at).toLocaleDateString("ro-RO"),
-          summary: s.summary, keyPoints: s.key_points, questions: s.questions,
-        })));
-      }
+      try {
+        const summaries = await getSummaries(userId);
+        if (summaries.length > 0) {
+          const mapped = summaries.map((s, i) => ({
+            id: i + 1, title: s.title, subject: s.subject,
+            date: new Date(s.created_at).toLocaleDateString("ro-RO"),
+            summary: s.summary, keyPoints: s.key_points, questions: s.questions,
+          }));
+          setSavedSummaries(mapped);
+          try { localStorage.setItem("bacsmart_summaries", JSON.stringify(mapped)); } catch {}
+        }
+      } catch {}
     } catch (error) {
       console.error("Error loading user data:", error);
     }
@@ -510,7 +531,11 @@ export default function BACsmartApp() {
       date: new Date().toLocaleDateString("ro-RO", { day: "numeric", month: "short", year: "numeric" }),
       summary: generatedSummary.summary, keyPoints: generatedSummary.keyPoints, questions: generatedSummary.questions,
     };
-    setSavedSummaries((prev) => [newSummary, ...prev]);
+    setSavedSummaries((prev) => {
+      const updated = [newSummary, ...prev];
+      try { localStorage.setItem("bacsmart_summaries", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     if (authUser) {
       try {
         const dbRecord = await saveSummaryToDb(authUser.id, newSummary.title, newSummary.subject, newSummary.summary, newSummary.keyPoints, newSummary.questions, uploadedFile.name);
@@ -528,7 +553,11 @@ export default function BACsmartApp() {
   };
 
   const deleteSummary = async (id: number) => {
-    setSavedSummaries((prev) => prev.filter((s) => s.id !== id));
+    setSavedSummaries((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      try { localStorage.setItem("bacsmart_summaries", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     if (authUser) { try { await deleteSummaryFromDb(String(id), authUser.id); } catch (error) { console.error("Error deleting summary:", error); } }
     showToastMessage("Rezumat sters");
   };
