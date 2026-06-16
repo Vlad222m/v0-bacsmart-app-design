@@ -6,8 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     url: 'https://v0-bacsmart-app-design.vercel.app',
-    cleartext: true
-  }
+    cleartext: true,
+  },
 };
 
 export default config;
