@@ -71,20 +71,26 @@ export default function TestsTab({
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onOpenDocumentQuiz}
-          className="w-full py-3 rounded-xl font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-primary/20 to-primary/5 text-primary hover:from-primary/30 hover:to-primary/10 border border-primary/20 hover:border-primary/40 transition-all duration-200 flex items-center justify-center gap-2.5 overflow-hidden"
         >
-          <Plus className="w-5 h-5 shrink-0" />
-          <span>Quiz din document</span>
+          <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <Plus className="w-4 h-4" />
+          </div>
+          <span className="text-sm">Quiz din document</span>
         </button>
         <button
           onClick={onSavedQuizzes}
-          className="w-full py-3 rounded-xl font-medium bg-card border border-border text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2 relative"
+          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-card to-card/50 border border-border hover:border-primary/30 hover:bg-muted/80 transition-all duration-200 flex items-center justify-center gap-2.5 overflow-hidden"
         >
-          <FileText className="w-5 h-5 text-primary shrink-0" />
-          <span>Istoric teste</span>
+          <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <FileText className="w-4 h-4 text-primary" />
+          </div>
+          <span className="text-sm">Istoric teste</span>
           {savedQuizCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg shadow-primary/30">
-              {savedQuizCount > 9 ? "9+" : savedQuizCount}
+            <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center shadow-lg shadow-primary/30 ring-2 ring-background">
+              {savedQuizCount > 99 ? "99+" : savedQuizCount}
             </span>
           )}
         </button>
