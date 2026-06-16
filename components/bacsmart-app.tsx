@@ -859,6 +859,7 @@ export default function BACsmartApp() {
                 nextQuestion={nextQuestion} subjectScores={subjectScores}
                 totalScore={getTotalScore()} totalQuestions={getFilteredQuestions().length}
                 onOpenDocumentQuiz={() => setShowDocumentQuizUpload(true)}
+                onSavedQuizzes={openSavedQuizList} savedQuizCount={savedQuizzes.length}
               />
             )}
             {activeTab === "rezumate" && (

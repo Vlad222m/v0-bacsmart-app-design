@@ -17,6 +17,8 @@ interface TestsTabProps {
   totalScore: { correct: number; total: number };
   totalQuestions: number;
   onOpenDocumentQuiz: () => void;
+  onSavedQuizzes: () => void;
+  savedQuizCount: number;
 }
 
 export default function TestsTab({
@@ -33,6 +35,8 @@ export default function TestsTab({
   totalScore,
   totalQuestions,
   onOpenDocumentQuiz,
+  onSavedQuizzes,
+  savedQuizCount,
 }: TestsTabProps) {
   const answerLabels = ["A", "B", "C", "D"];
 
@@ -63,14 +67,28 @@ export default function TestsTab({
         </div>
       </div>
 
-      {/* Quiz din Document Button */}
-      <button
-        onClick={onOpenDocumentQuiz}
-        className="w-full py-3 rounded-xl font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
-      >
-        <Plus className="w-5 h-5" />
-        Quiz din document
-      </button>
+      {/* Quiz Buttons Row */}
+      <div className="flex gap-2">
+        <button
+          onClick={onOpenDocumentQuiz}
+          className="flex-1 py-3 rounded-xl font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Quiz din document
+        </button>
+        <button
+          onClick={onSavedQuizzes}
+          className="flex-1 py-3 rounded-xl font-medium bg-card border border-border text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2 relative"
+        >
+          <FileText className="w-5 h-5 text-primary" />
+          Istoric
+          {savedQuizCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              {savedQuizCount}
+            </span>
+          )}
+        </button>
+      </div>
 
       {/* Subject Filter */}
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
