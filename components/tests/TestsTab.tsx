@@ -67,24 +67,24 @@ export default function TestsTab({
         </div>
       </div>
 
-      {/* Quiz Buttons Row */}
-      <div className="flex gap-2">
+      {/* Quiz Buttons */}
+      <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onOpenDocumentQuiz}
-          className="flex-1 py-3 rounded-xl font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3 rounded-xl font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
         >
-          <Plus className="w-5 h-5" />
-          Quiz din document
+          <Plus className="w-5 h-5 shrink-0" />
+          <span>Quiz din document</span>
         </button>
         <button
           onClick={onSavedQuizzes}
-          className="flex-1 py-3 rounded-xl font-medium bg-card border border-border text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2 relative"
+          className="w-full py-3 rounded-xl font-medium bg-card border border-border text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2 relative"
         >
-          <FileText className="w-5 h-5 text-primary" />
-          Istoric
+          <FileText className="w-5 h-5 text-primary shrink-0" />
+          <span>Istoric teste</span>
           {savedQuizCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-              {savedQuizCount}
+            <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg shadow-primary/30">
+              {savedQuizCount > 9 ? "9+" : savedQuizCount}
             </span>
           )}
         </button>

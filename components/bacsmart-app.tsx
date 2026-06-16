@@ -387,10 +387,12 @@ export default function BACsmartApp() {
     // Update progress bar based on actual accuracy
     const subjScore = updatedScores[question.subject];
     const newProgress = subjScore.total > 0 ? Math.round((subjScore.correct / subjScore.total) * 100) : 0;
-    setSubjectsState((prev) => prev.map((s) => s.name === question.subject ? { ...s, progress: newProgress } : s));
-    // Persist progress to localStorage
-    try { localStorage.setItem("bacsmart_progress", JSON.stringify(subjectsState.map((s) => ({ name: s.name, progress: s.name === question.subject ? newProgress : s.progress })))); } catch {}
-    if (authUser) { try { await saveSubjectProgress(authUser.id, question.subject, newProgress); } catch (e) { console.error("DB saveSubjectProgress error:", e); } }
+    setSubjectsState((prev) => {
+      const updated = prev.map((s) => s.name === question.subject ? { ...s, progress: newProgress } : s);
+      // Persist progress to localStorage with latest state
+      try { localStorage.setItem("bacsmart_progress", JSON.stringify(updated.map((s) => ({ name: s.name, progress: s.progress })))); } catch {}
+      return updated;
+    });
   };
 
   const nextQuestion = () => {
@@ -522,7 +524,7 @@ export default function BACsmartApp() {
   const saveCurrentQuiz = async () => {
     if (!generatedQuizQuestions.length || !documentQuizFile) return;
     const title = documentQuizFile.name.replace(/\.[^/.]+$/, "");
-    const quizData = {
+    const quizData: SavedQuiz = {
       id: Date.now().toString(),
       title,
       difficulty: docQuizDifficulty,
@@ -530,15 +532,23 @@ export default function BACsmartApp() {
       score: docQuizScore,
       total: generatedQuizQuestions.length,
       fileName: documentQuizFile.name,
+      created_at: new Date().toISOString(),
     };
-    setSavedQuizzes((prev) => [quizData as SavedQuiz, ...prev]);
-    // Persist to localStorage
-    try { localStorage.setItem("bacsmart_quizzes", JSON.stringify([quizData as SavedQuiz, ...savedQuizzes])); } catch {}
+    setSavedQuizzes((prev) => {
+      const updated = [quizData, ...prev];
+      // Persist to localStorage with latest state
+      try { localStorage.setItem("bacsmart_quizzes", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     if (authUser) {
       try {
         const dbQuiz = await saveQuiz(authUser.id, title, documentQuizFile.name, docQuizDifficulty, generatedQuizQuestions, docQuizScore, generatedQuizQuestions.length);
         if (dbQuiz?.id) {
-          setSavedQuizzes((prev) => prev.map((q) => q.id === quizData.id ? { ...q, id: dbQuiz.id } : q));
+          setSavedQuizzes((prev) => {
+            const updated = prev.map((q) => q.id === quizData.id ? { ...q, id: dbQuiz.id } : q);
+            try { localStorage.setItem("bacsmart_quizzes", JSON.stringify(updated)); } catch {}
+            return updated;
+          });
         }
       } catch (e) { console.error("Error saving quiz:", e); }
     }
