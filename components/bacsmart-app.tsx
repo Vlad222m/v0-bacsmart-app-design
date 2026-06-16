@@ -220,28 +220,31 @@ export default function BACsmartApp() {
       }
 
       // Load scores: DB first, fallback to localStorage
-      const scores = await getAggregatedScores(userId);
-      if (Object.keys(scores).length > 0) {
-        setSubjectScores(scores);
-        try { localStorage.setItem("bacsmart_scores", JSON.stringify(scores)); } catch {}
-      } else {
-        try {
+      try {
+        const scores = await getAggregatedScores(userId);
+        if (Object.keys(scores).length > 0) {
+          setSubjectScores(scores);
+          try { localStorage.setItem("bacsmart_scores", JSON.stringify(scores)); } catch {}
+        } else {
           const localScores = localStorage.getItem("bacsmart_scores");
           if (localScores) setSubjectScores(JSON.parse(localScores));
-        } catch {}
+        }
+      } catch {
+        const localScores = localStorage.getItem("bacsmart_scores");
+        if (localScores) setSubjectScores(JSON.parse(localScores));
       }
 
       // Load progress: DB first, fallback to localStorage
-      const progress = await getSubjectProgress(userId);
-      let updatedSubjects: typeof subjects;
-      if (progress.length > 0) {
-        updatedSubjects = subjects.map((s) => {
-          const saved = progress.find((p) => p.subject === s.name);
-          return saved ? { ...s, progress: saved.progress } : s;
-        });
-        try { localStorage.setItem("bacsmart_progress", JSON.stringify(updatedSubjects.map((s) => ({ name: s.name, progress: s.progress })))); } catch {}
-      } else {
-        try {
+      let updatedSubjects: typeof subjects = subjects;
+      try {
+        const progress = await getSubjectProgress(userId);
+        if (progress.length > 0) {
+          updatedSubjects = subjects.map((s) => {
+            const saved = progress.find((p) => p.subject === s.name);
+            return saved ? { ...s, progress: saved.progress } : s;
+          });
+          try { localStorage.setItem("bacsmart_progress", JSON.stringify(updatedSubjects.map((s) => ({ name: s.name, progress: s.progress })))); } catch {}
+        } else {
           const localProgress = localStorage.getItem("bacsmart_progress");
           if (localProgress) {
             const parsed = JSON.parse(localProgress);
@@ -249,10 +252,19 @@ export default function BACsmartApp() {
               const found = parsed.find((p: { name: string; progress: number }) => p.name === s.name);
               return found ? { ...s, progress: found.progress } : s;
             });
-          } else {
-            updatedSubjects = subjects;
           }
-        } catch { updatedSubjects = subjects; }
+        }
+      } catch {
+        const localProgress = localStorage.getItem("bacsmart_progress");
+        if (localProgress) {
+          try {
+            const parsed = JSON.parse(localProgress);
+            updatedSubjects = subjects.map((s) => {
+              const found = parsed.find((p: { name: string; progress: number }) => p.name === s.name);
+              return found ? { ...s, progress: found.progress } : s;
+            });
+          } catch {}
+        }
       }
 
       // Filter subjects based on BAC preferences
@@ -269,15 +281,18 @@ export default function BACsmartApp() {
         setMessages(chatHistory.map((msg, i) => ({ id: i + 1, text: msg.content, isUser: msg.role === "user" })));
       }
 
-      const quizzes = await getQuizzes(userId);
-      if (quizzes.length > 0) {
-        setSavedQuizzes(quizzes);
-        try { localStorage.setItem("bacsmart_quizzes", JSON.stringify(quizzes)); } catch {}
-      } else {
-        try {
+      try {
+        const quizzes = await getQuizzes(userId);
+        if (quizzes.length > 0) {
+          setSavedQuizzes(quizzes);
+          try { localStorage.setItem("bacsmart_quizzes", JSON.stringify(quizzes)); } catch {}
+        } else {
           const localQuizzes = localStorage.getItem("bacsmart_quizzes");
           if (localQuizzes) setSavedQuizzes(JSON.parse(localQuizzes));
-        } catch {}
+        }
+      } catch {
+        const localQuizzes = localStorage.getItem("bacsmart_quizzes");
+        if (localQuizzes) setSavedQuizzes(JSON.parse(localQuizzes));
       }
 
       // Load daily usage for free tier limits — DB first, fallback localStorage
