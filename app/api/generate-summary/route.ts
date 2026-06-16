@@ -90,22 +90,20 @@ export async function POST(req: Request) {
 
     const extractedText = await extractText(file);
 
-    const instruction = `Ești un profesor expert pentru Bacalaureatul din România. Analizează acest material educațional și creează un rezumat de studiu complet.
-Răspunde DOAR cu JSON valid, fără text în afară, fără markdown, fără backticks:
+    const instruction = `Profesor BAC. Rezumat scurt pe baza materialului. JSON doar:
 {
-  "summary": "un rezumat clar și bine structurat al materialului în 2-3 paragrafe, în limba română",
-  "keyPoints": ["punct cheie 1", "punct cheie 2", "punct cheie 3", "punct cheie 4", "punct cheie 5", "punct cheie 6"],
+  "summary": "rezumat 2-3 paragrafe",
+  "keyPoints": ["punct cheie 1", "punct cheie 2", "punct cheie 3", "punct cheie 4"],
   "questions": ["intrebare 1", "intrebare 2", "intrebare 3"]
 }`;
 
-    // Cele mai eficiente modele ca pret/performanta
+    // Model principal: gemini-2.5-flash-lite (suficient pentru rezumate simple)
+    // Fallback: gpt-4o-mini
     const MODELS = [
       "google/gemini-2.5-flash-lite",
-      "google/gemini-2.5-flash",
       "openai/gpt-4o-mini",
     ];
 
-    let lastError = "";
     let data: any = null;
 
     for (const model of MODELS) {
@@ -119,7 +117,7 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără markdown, fără ba
         },
         body: JSON.stringify({
           model,
-          max_tokens: 4000,
+          max_tokens: 1500,
           messages: [
             {
               role: "user",

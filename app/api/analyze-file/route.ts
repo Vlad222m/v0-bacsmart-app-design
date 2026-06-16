@@ -80,24 +80,22 @@ export async function POST(req: Request) {
     // Extragem textul LOCAL - zero tokeni consumați inutil
     const extractedText = await extractText(file);
 
-    const systemPrompt = `Ești un profesor expert pentru Bacalaureatul din România. Analizează cu atenție materialul furnizat și generează exact ${numQuestions} întrebări grilă bazate STRICT pe conținutul real al materialului. Întrebările trebuie să verifice înțelegerea informațiilor din material.
-
-Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
+    const systemPrompt = `Profesor BAC. Generează exact ${numQuestions} întrebări grilă pe baza materialului. JSON doar, fără text în plus:
 {
   "questions": [
     {
-      "question": "textul întrebării bazat pe material",
-      "options": { "A": "varianta A", "B": "varianta B", "C": "varianta C", "D": "varianta D" },
+      "question": "...",
+      "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
       "correct": "A",
-      "explanation": "explicație clară de ce răspunsul este corect"
+      "explanation": "..."
     }
   ]
 }`;
 
-    // Cele mai eficiente modele ca pret/performanta
+    // Model principal: gemini-2.5-flash-lite (suficient pentru generat intrebari)
+    // Fallback: gpt-4o-mini
     const MODELS = [
       "google/gemini-2.5-flash-lite",
-      "google/gemini-2.5-flash",
       "openai/gpt-4o-mini",
     ];
 
@@ -115,7 +113,7 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
         },
         body: JSON.stringify({
           model,
-          max_tokens: 4000,
+          max_tokens: 2000,
           messages: [
             {
               role: "user",

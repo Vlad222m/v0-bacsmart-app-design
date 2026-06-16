@@ -24,36 +24,26 @@ export async function POST(req: Request) {
 
     const subjectName = subject || "Bacalaureat";
 
-    const systemPrompt = `Ești un profesor expert și prietenos pentru Bacalaureatul din România, specializat în ${subjectName}.
+    // System prompt mai scurt — acelasi efect, mai putini tokeni de baza
+    const systemPrompt = `Profesor BAC, specializat ${subjectName}. Răspunsuri clare, concise, în română, cu exemple pe înțelesul unui elev. Fără introduceri și concluzii lungi, direct la subiect.`;
 
-Rolul tău:
-- Răspunzi clar, concis și pe înțelesul unui elev de liceu
-- Folosești exemple concrete relevante pentru programa de BAC
-- Explici pas cu pas când e vorba de exerciții sau rezolvări
-- Folosești formatare cu paragrafe scurte și liste când e util
-- Încurajezi elevul și păstrezi un ton pozitiv
-- Răspunzi în limba română
-
-Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
-
-    // Ultimele 20 de mesaje se trimit integral
-    // Mesajele mai vechi sunt rezumate compact (consuma foarte putini tokeni)
-    const MAX_RECENT = 20;
+    // Mesaje mai vechi: doar ultimele 6 cuvinte din intrebarile user, maxim 3 intrebari vechi
+    const MAX_RECENT = 10; // din 20 → 10 — de ajuns pentru coerenta
+    const MAX_OLDER_CONTEXT = 3; // maxim 3 intrebari vechi rezumate
     const allMessages = messages.filter((m: { text?: string }) => m.text && m.text.trim());
     const recentMessages = allMessages.slice(-MAX_RECENT);
     const olderMessages = allMessages.slice(0, -MAX_RECENT);
 
-    // Rezumat compact al conversatiei vechi
+    // Rezumat ultra-compact al conversatiei vechi
     let summaryPrefix = "";
     if (olderMessages.length > 0) {
       const userParts = olderMessages
         .filter((m: { isUser: boolean }) => m.isUser)
         .map((m: { text: string }) => m.text);
-      // Luam doar primele cuvinte din fiecare intrebare = rezumat ultra-compact
       const topicHints = userParts
-        .map((t: string) => t.split(" ").slice(0, 6).join(" "))
-        .slice(0, 5);
-      summaryPrefix = `[Context anterior: elevul a intrebat despre: ${topicHints.join("; ")}. Păstrează coerența cu ce s-a discutat.]\n\n`;
+        .map((t: string) => t.split(" ").slice(0, 4).join(" ")) // 6 → 4 cuvinte
+        .slice(0, MAX_OLDER_CONTEXT);
+      summaryPrefix = `[Context anterior: ${topicHints.join("; ")}]\n\n`;
     }
 
     const openRouterMessages = recentMessages.map((m: { isUser: boolean; text: string }) => ({
@@ -78,14 +68,13 @@ Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
       return NextResponse.json({ error: "No valid user message" }, { status: 400 });
     }
 
-    // Modele OpenRouter ordonate dupa eficienta
+    // Model principal: gemini-2.5-flash-lite (cel mai ieftin, suficient pentru conversatii)
+    // Fallback direct pe gpt-4o-mini fara gemini-2.5-flash (acelasi pret, similar)
     const MODELS = [
       "google/gemini-2.5-flash-lite",
-      "google/gemini-2.5-flash",
       "openai/gpt-4o-mini",
     ];
 
-    let lastError = "";
     let data: any = null;
 
     for (const model of MODELS) {
@@ -99,7 +88,7 @@ Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
         },
         body: JSON.stringify({
           model,
-          max_tokens: 1000,
+          max_tokens: 600, // din 1000 → 600, majoritatea raspunsurilor sunt scurte
           messages: [
             { role: "system", content: systemPrompt },
             ...openRouterMessages,
@@ -111,8 +100,8 @@ Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
         data = await res.json();
         break;
       } else {
-        lastError = await res.text();
-        console.error(`OpenRouter model ${model} failed:`, lastError);
+        const err = await res.text();
+        console.error(`OpenRouter model ${model} failed:`, err);
       }
     }
 
