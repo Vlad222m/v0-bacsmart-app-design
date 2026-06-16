@@ -334,20 +334,32 @@ export const resetUserProgress = async (userId: string) => {
 
 // Get current session access token for API auth headers
 export const getSessionToken = async (): Promise<string | null> => {
-  if (!supabase) {
-    // Try Supabase localStorage fallback pattern
-    try {
-      for (const key of Object.keys(localStorage)) {
-        if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
-          const parsed = JSON.parse(localStorage.getItem(key) || "{}");
-          return parsed?.access_token || null;
-        }
+  // Try localStorage first (works even before supabase client is ready)
+  try {
+    const val = localStorage.getItem("supabase.auth.token");
+    if (val) {
+      const parsed = JSON.parse(val);
+      const currentKey = parsed?.currentKey || Object.keys(parsed || {}).find(k => k !== "currentKey");
+      if (currentKey && parsed[currentKey]?.access_token) {
+        return parsed[currentKey].access_token;
       }
-    } catch {}
-    return null;
+    }
+    // Fallback: scan for sb-* tokens in localStorage
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const parsed = JSON.parse(localStorage.getItem(key) || "{}");
+        if (parsed?.access_token) return parsed.access_token;
+      }
+    }
+  } catch {}
+
+  // Try supabase client session
+  if (supabase) {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) return data.session.access_token;
   }
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token || null;
+
+  return null;
 };
 
 export const saveBacPreferences = async (userId: string, bacProfile: string, selectedSubjects: string[]) => {
