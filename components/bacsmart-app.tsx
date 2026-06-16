@@ -78,6 +78,46 @@ export default function BACsmartApp() {
     } catch {}
   };
 
+  const [streakDays, setStreakDays] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("bacsmart_streak_days");
+      const lastDate = localStorage.getItem("bacsmart_streak_last_date");
+      const today = new Date().toISOString().split("T")[0];
+      if (saved && lastDate) {
+        // If last activity was yesterday or today, keep streak
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split("T")[0];
+        if (lastDate === today || lastDate === yesterdayStr) {
+          return parseInt(saved) || 0;
+        }
+        // More than 1 day gap = reset streak
+        return 0;
+      }
+    } catch {}
+    return 0;
+  });
+
+  const updateStreak = () => {
+    const today = new Date().toISOString().split("T")[0];
+    const lastDate = localStorage.getItem("bacsmart_streak_last_date");
+    if (lastDate === today) return; // Already counted today
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+    let newStreak: number;
+    if (lastDate === yesterdayStr) {
+      newStreak = streakDays + 1;
+    } else {
+      newStreak = 1; // First day or gap
+    }
+    setStreakDays(newStreak);
+    try {
+      localStorage.setItem("bacsmart_streak_days", String(newStreak));
+      localStorage.setItem("bacsmart_streak_last_date", today);
+    } catch {}
+  };
+
   const incrementLocalUsage = (field: "chat" | "answers" | "summaries" | "quizzes") => {
     setDailyUsage((prev) => {
       const updated = { ...prev, [field]: prev[field] + 1 };
@@ -458,6 +498,7 @@ export default function BACsmartApp() {
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
       incrementLocalUsage("chat");
+      updateStreak();
       if (authUser) { try { await saveChatMessage(authUser.id, selectedSubject.name, "assistant", aiResponse); } catch (error) { console.error("Error saving chat message:", error); } }
     } catch (error) {
       console.error("Error generating AI response:", error);
@@ -477,6 +518,7 @@ export default function BACsmartApp() {
     };
     setSubjectScores(updatedScores);
     incrementLocalUsage("answers");
+    updateStreak();
     // Persist to localStorage
     try { localStorage.setItem("bacsmart_scores", JSON.stringify(updatedScores)); } catch {}
     if (authUser) { try { await saveTestScore(authUser.id, question.subject, isCorrect ? 1 : 0, 1); } catch (e) { console.error("DB saveTestScore error:", e); } }
@@ -533,6 +575,7 @@ export default function BACsmartApp() {
       const data = await response.json();
       if (!response.ok || !data.summary) throw new Error(data.error || "Failed to generate summary");
       incrementLocalUsage("summaries");
+      updateStreak();
       setGeneratedSummary({ fileName: data.fileName || uploadedFile.name, summary: data.summary, keyPoints: data.keyPoints || [], questions: data.questions || [] });
     } catch (error) {
       console.error("Error generating summary:", error);
@@ -616,6 +659,7 @@ export default function BACsmartApp() {
       const data = await response.json();
       if (!response.ok || !data.questions) throw new Error(data.error || "Failed to generate quiz");
       incrementLocalUsage("quizzes");
+      updateStreak();
       setGeneratedQuizQuestions(data.questions);
       setCurrentDocQuizIndex(0);
       setDocQuizSelectedAnswer(null);
@@ -975,7 +1019,7 @@ export default function BACsmartApp() {
                 onLogoutClick={() => { setShowProfileMenu(false); setShowLogoutModal(true); }}
                 onHelpClick={() => { setShowProfileMenu(false); setShowHelpScreen(true); }}
                 onNotificationsClick={() => { setShowProfileMenu(false); setShowNotificationsScreen(true); }}
-                dailyUsage={dailyUsage}
+                dailyUsage={dailyUsage} streakDays={streakDays}
               />
             )}
             {activeTab === "chat" && (

@@ -50,6 +50,7 @@ interface HomeTabProps {
   onHelpClick: () => void;
   onNotificationsClick: () => void;
   dailyUsage?: { chat: number; answers: number; summaries: number; quizzes: number };
+  streakDays?: number;
 }
 
 export default function HomeTab({
@@ -67,6 +68,7 @@ export default function HomeTab({
   onHelpClick,
   onNotificationsClick,
   dailyUsage,
+  streakDays = 0,
 }: HomeTabProps) {
   const firstName = userProfile?.full_name?.split(" ")[0] || "Elev";
   const initials = userProfile?.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
@@ -76,7 +78,6 @@ export default function HomeTab({
   const totalCorrect = Object.values(subjectScores).reduce((acc, s) => acc + (s.correct || 0), 0);
   const totalQuestions = Object.values(subjectScores).reduce((acc, s) => acc + (s.total || 0), 0);
   const avgAccuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-  const streakDays = 12; // Momentan placeholder — poate fi calculat din activitate
 
   return (
     <div className="space-y-5 pt-2">
