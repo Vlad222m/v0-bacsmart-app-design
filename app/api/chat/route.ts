@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model,
-          max_tokens: 600, // din 1000 → 600, majoritatea raspunsurilor sunt scurte
+          max_tokens: 1000,
           messages: [
             { role: "system", content: systemPrompt },
             ...openRouterMessages,

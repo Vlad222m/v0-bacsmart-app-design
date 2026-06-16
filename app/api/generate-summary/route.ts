@@ -117,7 +117,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model,
-          max_tokens: 1000,
+          max_tokens: 1500,
           messages: [
             {
               role: "user",
