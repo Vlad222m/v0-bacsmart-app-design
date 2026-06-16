@@ -91,22 +91,18 @@ export default function TestsTab({
         <button
           onClick={onOpenDocumentQuiz}
           disabled={quizzesLimitReached}
-          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-primary/20 to-primary/5 text-primary hover:from-primary/30 hover:to-primary/10 border border-primary/20 hover:border-primary/40 transition-all duration-200 flex items-center justify-center gap-2.5 overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
+          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-primary/20 to-primary/5 text-primary hover:from-primary/30 hover:to-primary/10 border border-primary/20 hover:border-primary/40 transition-all duration-200 flex items-center justify-center gap-1 overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-            <Plus className="w-4 h-4" />
-          </div>
+          <Plus className="w-4 h-4 shrink-0" />
           <span className="text-sm">Quiz din document</span>
         </button>
         <button
           onClick={onSavedQuizzes}
-          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-card to-card/50 border border-border hover:border-primary/30 hover:bg-muted/80 transition-all duration-200 flex items-center justify-center gap-2.5 overflow-hidden"
+          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-card to-card/50 border border-border hover:border-primary/30 hover:bg-muted/80 transition-all duration-200 flex items-center justify-center gap-1.5 overflow-hidden"
         >
           <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-            <FileText className="w-4 h-4 text-primary" />
-          </div>
+          <FileText className="w-4 h-4 shrink-0 text-primary" />
           <span className="text-sm">Istoric teste</span>
           {savedQuizCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center shadow-lg shadow-primary/30 ring-2 ring-background">
