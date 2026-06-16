@@ -100,13 +100,13 @@ export default function TestsTab({
         </button>
         <button
           onClick={onSavedQuizzes}
-          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-card to-card/50 border border-border hover:border-primary/30 hover:bg-muted/80 transition-all duration-200 flex items-center justify-center gap-1.5 overflow-hidden"
+          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-card to-card/50 border border-border hover:border-primary/30 hover:bg-muted/80 transition-all duration-200 flex items-center justify-center gap-1.5"
         >
-          <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
           <FileText className="w-4 h-4 shrink-0 text-primary" />
           <span className="text-sm">Istoric teste</span>
           {savedQuizCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center shadow-lg shadow-primary/30 ring-2 ring-background">
+            <span className="absolute -top-2.5 -right-2.5 bg-primary text-primary-foreground text-[10px] font-bold min-w-[22px] h-[22px] px-1.5 rounded-full flex items-center justify-center shadow-lg shadow-primary/40 ring-[3px] ring-background z-10">
               {savedQuizCount > 99 ? "99+" : savedQuizCount}
             </span>
           )}
