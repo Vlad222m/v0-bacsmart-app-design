@@ -16,6 +16,7 @@ interface ChatTabProps {
   currentPlan?: string;
   dailyChatUsage?: number;
   onGoPremium?: () => void;
+  onClearChat?: () => void;
 }
 
 const QUICK_QUESTIONS: Record<string, string[]> = {
@@ -42,6 +43,7 @@ export default function ChatTab({
   currentPlan,
   dailyChatUsage = 0,
   onGoPremium,
+  onClearChat,
 }: ChatTabProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -101,8 +103,7 @@ export default function ChatTab({
           <button
             onClick={() => {
               if (confirm("Stergi toata conversatia?")) {
-                // Redirectionam la chat cu un state fresh — folosim un query param care reseteaza
-                window.location.href = "/?clearChat=1";
+                if (onClearChat) onClearChat();
               }
             }}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"

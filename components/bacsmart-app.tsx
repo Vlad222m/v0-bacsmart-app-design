@@ -584,6 +584,19 @@ export default function BACsmartApp() {
     setActiveTab("tests");
   };
 
+  const handleClearChat = async () => {
+    setMessages([{ id: 1, text: `Salut! Sunt profesorul tău AI pentru ${selectedSubject.name}. Întreabă-mă orice despre această materie!`, isUser: false }]);
+    if (authUser && supabase) {
+      try {
+        await supabase.from("chat_messages").delete().eq("user_id", authUser.id).eq("subject", selectedSubject.name);
+        showToastMessage("Conversația a fost ștearsă");
+      } catch (e) {
+        console.error("Error deleting chat:", e);
+        showToastMessage("Eroare la ștergere");
+      }
+    }
+  };
+
   const handleResetProgress = async () => {
     setSubjectsState(subjectsState.map((s) => ({ ...s, progress: 0 })));
     setSubjectScores({});
@@ -972,7 +985,7 @@ export default function BACsmartApp() {
                 newMessage={newMessage} setNewMessage={setNewMessage}
                 sendMessage={sendMessage} isTyping={isTyping}
                 currentPlan={currentPlan} dailyChatUsage={dailyUsage.chat}
-                onGoPremium={goToPremium}
+                onGoPremium={goToPremium} onClearChat={handleClearChat}
               />
             )}
             {activeTab === "tests" && (
