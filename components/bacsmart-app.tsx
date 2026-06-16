@@ -86,6 +86,8 @@ export default function BACsmartApp() {
     });
   };
 
+  const goToPremium = () => setActiveTab("premium");
+
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [selectedSubject, setSelectedSubject] = useState(subjects[0]);
   const [messages, setMessages] = useState<Message[]>([
@@ -909,6 +911,7 @@ export default function BACsmartApp() {
                 newMessage={newMessage} setNewMessage={setNewMessage}
                 sendMessage={sendMessage} isTyping={isTyping}
                 currentPlan={currentPlan} dailyChatUsage={dailyUsage.chat}
+                onGoPremium={goToPremium}
               />
             )}
             {activeTab === "tests" && (
@@ -923,7 +926,7 @@ export default function BACsmartApp() {
                 onOpenDocumentQuiz={() => setShowDocumentQuizUpload(true)}
                 onSavedQuizzes={openSavedQuizList} savedQuizCount={savedQuizzes.length}
                 currentPlan={currentPlan} dailyAnswersUsage={dailyUsage.answers}
-                dailyQuizzesUsage={dailyUsage.quizzes}
+                dailyQuizzesUsage={dailyUsage.quizzes} onGoPremium={goToPremium}
               />
             )}
             {activeTab === "rezumate" && (
@@ -934,6 +937,7 @@ export default function BACsmartApp() {
                 savedSummaries={savedSummaries} onSaveSummary={saveSummary}
                 onDeleteSummary={deleteSummary} showToastMessage={showToastMessage}
                 currentPlan={currentPlan} dailySummaryUsage={dailyUsage.summaries}
+                onGoPremium={goToPremium}
               />
             )}
             {activeTab === "progress" && (

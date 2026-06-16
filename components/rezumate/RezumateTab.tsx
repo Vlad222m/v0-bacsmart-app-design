@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Camera, Upload, X, Zap, Check, Save, RefreshCw, FileText, Trash2, ChevronDown } from "lucide-react";
+import { Camera, Upload, X, Zap, Check, Save, RefreshCw, FileText, Trash2, ChevronDown, Crown } from "lucide-react";
 import type { GeneratedSummaryData } from "@/components/types";
 
 interface RezumateTabProps {
@@ -17,6 +17,7 @@ interface RezumateTabProps {
   showToastMessage: (msg: string) => void;
   currentPlan?: string;
   dailySummaryUsage?: number;
+  onGoPremium?: () => void;
 }
 
 export default function RezumateTab({
@@ -32,6 +33,7 @@ export default function RezumateTab({
   showToastMessage,
   currentPlan,
   dailySummaryUsage = 0,
+  onGoPremium,
 }: RezumateTabProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -198,11 +200,11 @@ export default function RezumateTab({
           {/* Generate Button */}
           {uploadedFile && !isGenerating && (
             <button
-              onClick={onGenerate}
-              disabled={summaryLimitReached}
-              className="w-full py-3.5 rounded-xl font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={summaryLimitReached ? onGoPremium : onGenerate}
+              className="w-full py-3.5 rounded-xl font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
             >
-              <Zap className="w-5 h-5" /> Genereaza rezumat
+              {summaryLimitReached ? <Crown className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+              {summaryLimitReached ? "Upgrade la Premium" : "Genereaza rezumat"}
             </button>
           )}
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Copy, Check, Trash2, ThumbsUp, ThumbsDown, Sparkles, ChevronDown } from "lucide-react";
+import { Send, Copy, Check, Trash2, ThumbsUp, ThumbsDown, Sparkles, ChevronDown, Crown } from "lucide-react";
 import type { Subject, Message } from "@/components/types";
 
 interface ChatTabProps {
@@ -15,6 +15,7 @@ interface ChatTabProps {
   isTyping: boolean;
   currentPlan?: string;
   dailyChatUsage?: number;
+  onGoPremium?: () => void;
 }
 
 const QUICK_QUESTIONS: Record<string, string[]> = {
@@ -40,6 +41,7 @@ export default function ChatTab({
   isTyping,
   currentPlan,
   dailyChatUsage = 0,
+  onGoPremium,
 }: ChatTabProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -230,12 +232,12 @@ export default function ChatTab({
       <div className="absolute bottom-0 left-0 right-0 bg-background pt-2 pb-1">
         <div className="flex gap-2">
           {chatLimitReached ? (
-            <div className="flex-1 flex items-center gap-2 bg-error/10 rounded-xl px-4 py-3 border border-error/30">
-              <p className="text-xs text-muted-foreground flex-1">Ai atins limita zilnică de 10 mesaje</p>
-              <button onClick={() => {}} className="text-[10px] font-medium text-primary hover:underline shrink-0">
-                Upgrade →
-              </button>
-            </div>
+            <button
+              onClick={onGoPremium}
+              className="flex-1 flex items-center justify-center gap-2 bg-primary/10 rounded-xl px-4 py-3 border border-primary/30 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
+              <Crown className="w-4 h-4" /> Upgrade la Premium pentru mesaje nelimitate
+            </button>
           ) : (
             <input
               id="chat-input"
@@ -248,8 +250,8 @@ export default function ChatTab({
             />
           )}
           <button
-            onClick={sendMessage}
-            disabled={!newMessage.trim() || isTyping || chatLimitReached}
+            onClick={chatLimitReached ? onGoPremium : sendMessage}
+            disabled={(!newMessage.trim() || isTyping) && !chatLimitReached}
             className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Send className="w-5 h-5 text-primary-foreground" />

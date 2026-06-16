@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Plus, ChevronRight, Check, X } from "lucide-react";
+import { FileText, Plus, ChevronRight, Check, X, Crown } from "lucide-react";
 import type { Subject, TestQuestion, SubjectScores } from "@/components/types";
 
 interface TestsTabProps {
@@ -22,6 +22,7 @@ interface TestsTabProps {
   currentPlan?: string;
   dailyAnswersUsage?: number;
   dailyQuizzesUsage?: number;
+  onGoPremium?: () => void;
 }
 
 export default function TestsTab({
@@ -43,6 +44,7 @@ export default function TestsTab({
   currentPlan,
   dailyAnswersUsage = 0,
   dailyQuizzesUsage = 0,
+  onGoPremium,
 }: TestsTabProps) {
   const answerLabels = ["A", "B", "C", "D"];
 
@@ -89,13 +91,12 @@ export default function TestsTab({
       {/* Quiz Buttons */}
       <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={onOpenDocumentQuiz}
-          disabled={quizzesLimitReached}
-          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-primary/20 to-primary/5 text-primary hover:from-primary/30 hover:to-primary/10 border border-primary/20 hover:border-primary/40 transition-all duration-200 flex items-center justify-center gap-1 overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={quizzesLimitReached ? onGoPremium : onOpenDocumentQuiz}
+          className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-primary/20 to-primary/5 text-primary hover:from-primary/30 hover:to-primary/10 border border-primary/20 hover:border-primary/40 transition-all duration-200 flex items-center justify-center gap-1 overflow-hidden"
         >
           <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <Plus className="w-4 h-4 shrink-0" />
-          <span className="text-sm">Quiz din document</span>
+          {quizzesLimitReached ? <Crown className="w-4 h-4 shrink-0" /> : <Plus className="w-4 h-4 shrink-0" />}
+          <span className="text-sm">{quizzesLimitReached ? "Premium" : "Quiz din document"}</span>
         </button>
         <button
           onClick={onSavedQuizzes}
@@ -248,15 +249,22 @@ export default function TestsTab({
       )}
 
       {/* Action Button */}
-      {!showResult ? (
+      {answersLimitReached && !showResult ? (
+        <button
+          onClick={onGoPremium}
+          className="w-full py-3 rounded-xl font-medium bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+        >
+          <Crown className="w-4 h-4" /> Upgrade la Premium pentru răspunsuri nelimitate
+        </button>
+      ) : !showResult ? (
         <button
           onClick={handleAnswerSubmit}
-          disabled={selectedAnswer === null || answersLimitReached}
+          disabled={selectedAnswer === null}
           className={`w-full py-3 rounded-xl font-medium transition-all ${
             selectedAnswer !== null ? "bg-primary text-primary-foreground hover:opacity-90" : "bg-muted text-muted-foreground cursor-not-allowed"
           }`}
         >
-          {answersLimitReached ? "Limită atinsă — Upgrade" : "Verifica Raspunsul"}
+          Verifica Raspunsul
         </button>
       ) : (
         <button
