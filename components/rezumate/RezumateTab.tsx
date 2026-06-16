@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Camera, Upload, X, Zap, Check, Save, RefreshCw, FileText, Trash2, ChevronDown } from "lucide-react";
 import type { GeneratedSummaryData } from "@/components/types";
 
@@ -89,6 +89,13 @@ export default function RezumateTab({
     setGeneratedSummary(null);
     clearFile();
   };
+
+  // Revoke object URL on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
 
   const getFileIcon = (fileName: string) => {
     if (!fileName) return <FileText className="w-6 h-6 text-blue-400" />;
@@ -284,7 +291,7 @@ export default function RezumateTab({
           </div>
 
           <div className="flex gap-3">
-            <button onClick={() => { onSaveSummary(); showToastMessage("Rezumat salvat cu succes!"); }} className="flex-1 py-3 rounded-xl font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+            <button onClick={() => onSaveSummary()} className="flex-1 py-3 rounded-xl font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
               <Save className="w-4 h-4" /> Salveaza
             </button>
             <button onClick={handleNewSummary} className="flex-1 py-3 rounded-xl font-medium bg-card border border-border text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2">

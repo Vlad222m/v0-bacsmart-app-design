@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
-  metadataBase: new URL('http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://v0-bacsmart-app-design.vercel.app'),
 }
 
 export default function RootLayout({

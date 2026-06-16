@@ -90,7 +90,8 @@ create policy "Users can view own profile"
 
 create policy "Users can update own profile"
   on public.profiles for update
-  using (auth.uid() = id);
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
 
 create policy "Users can insert own profile"
   on public.profiles for insert

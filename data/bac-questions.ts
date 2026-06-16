@@ -618,6 +618,7 @@ export const getAllQuestions = () => {
 };
 
 // Helper to convert A/B/C/D correct answer to index (0-3)
-export const correctToIndex = (correct: "A" | "B" | "C" | "D"): number => {
-  return { A: 0, B: 1, C: 2, D: 3 }[correct];
+export const correctToIndex = (correct: string): number => {
+  const idx = { A: 0, B: 1, C: 2, D: 3 }[correct?.toUpperCase()];
+  return idx !== undefined ? idx : 0; // fallback la A daca e invalid
 };

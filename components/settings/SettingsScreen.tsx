@@ -4,6 +4,8 @@ import { useState } from "react";
 import { ArrowLeft, Bell, Palette, BarChart3, Trash2, BookOpen, Pencil, RotateCcw } from "lucide-react";
 import type { Settings } from "@/components/types";
 import BacProfileQuiz from "@/components/auth/BacProfileQuiz";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/AuthProvider";
 
 interface SettingsScreenProps {
   settings: Settings;
@@ -44,6 +46,35 @@ export default function SettingsScreen({
   const [showDeleteChatConfirm, setShowDeleteChatConfirm] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
   const [showBacQuiz, setShowBacQuiz] = useState(false);
+  const { user } = useAuth();
+
+  const handleDeleteChatHistory = async () => {
+    setShowDeleteChatConfirm(false);
+    if (supabase && user) {
+      try {
+        await supabase.from("chat_messages").delete().eq("user_id", user.id);
+      } catch (e) { console.error("Error deleting chat history:", e); }
+    }
+    showToastMessage("Istoricul conversațiilor a fost șters");
+  };
+
+  const handleDeleteAccount = async () => {
+    setShowDeleteAccountConfirm(false);
+    if (supabase && user) {
+      try {
+        // Delete user's data from all tables
+        await supabase.from("chat_messages").delete().eq("user_id", user.id);
+        await supabase.from("test_scores").delete().eq("user_id", user.id);
+        await supabase.from("subject_progress").delete().eq("user_id", user.id);
+        await supabase.from("summaries").delete().eq("user_id", user.id);
+        await supabase.from("quizzes").delete().eq("user_id", user.id);
+        await supabase.from("profiles").delete().eq("id", user.id);
+        // Sign out
+        await supabase.auth.signOut();
+      } catch (e) { console.error("Error deleting account:", e); }
+    }
+    window.location.replace("/");
+  };
 
   const handleToggle = (key: keyof Settings) => {
     if (key === "darkMode") return;
@@ -209,7 +240,7 @@ export default function SettingsScreen({
             <p className="text-muted-foreground mb-4">Esti sigur ca vrei sa stergi tot istoricul conversatiilor?</p>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteChatConfirm(false)} className="flex-1 py-3 rounded-xl font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors">Anuleaza</button>
-              <button onClick={() => { setShowDeleteChatConfirm(false); showToastMessage("Istoricul a fost sters"); }} className="flex-1 py-3 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">Sterge</button>
+              <button onClick={handleDeleteChatHistory} className="flex-1 py-3 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">Sterge</button>
             </div>
           </div>
         </div>
@@ -223,7 +254,7 @@ export default function SettingsScreen({
             <p className="text-muted-foreground mb-4">Aceasta actiune este ireversibila. Toate datele tale vor fi sterse permanent.</p>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteAccountConfirm(false)} className="flex-1 py-3 rounded-xl font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors">Anuleaza</button>
-              <button onClick={() => { setShowDeleteAccountConfirm(false); showToastMessage("Contul a fost sters"); }} className="flex-1 py-3 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">Sterge contul</button>
+              <button onClick={handleDeleteAccount} className="flex-1 py-3 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">Sterge contul</button>
             </div>
           </div>
         </div>

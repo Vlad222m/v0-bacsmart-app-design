@@ -56,9 +56,12 @@ export default function ChatTab({
     setNewMessage(q);
     setTimeout(() => {
       setNewMessage("");
-      // Trimitem direct intrebarea
-      const inputEvent = new KeyboardEvent("keydown", { key: "Enter" });
-      document.querySelector<HTMLInputElement>("#chat-input")?.dispatchEvent(inputEvent);
+      // Trimitem direct intrebarea — trimite evenimentul corect
+      const input = document.querySelector<HTMLInputElement>("#chat-input");
+      if (input) {
+        const inputEvent = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+        input.dispatchEvent(inputEvent);
+      }
     }, 100);
   };
 
@@ -85,7 +88,8 @@ export default function ChatTab({
           <button
             onClick={() => {
               if (confirm("Stergi toata conversatia?")) {
-                window.location.reload();
+                // Redirectionam la chat cu un state fresh — folosim un query param care reseteaza
+                window.location.href = "/?clearChat=1";
               }
             }}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"

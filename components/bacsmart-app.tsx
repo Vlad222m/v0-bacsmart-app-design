@@ -74,14 +74,22 @@ export default function BACsmartApp() {
 
   const [subjectsState, setSubjectsState] = useState(subjects);
 
-  const [settings, setSettings] = useState({
-    pushNotifications: true,
-    dailyReminder: true,
-    testResults: true,
-    darkMode: true,
-    reducedAnimations: false,
-    anonymousStats: true,
-    chatHistory: true,
+  const [settings, setSettings] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("bacsmart_settings");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return {
+      pushNotifications: true,
+      dailyReminder: true,
+      testResults: true,
+      darkMode: true,
+      reducedAnimations: false,
+      anonymousStats: true,
+      chatHistory: true,
+    };
   });
 
   const [showPremiumModal, setShowPremiumModal] = useState(false);
@@ -242,6 +250,13 @@ export default function BACsmartApp() {
     }
   }, [selectedSubject, authUser]);
 
+  // Persist settings to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("bacsmart_settings", JSON.stringify(settings));
+    } catch {}
+  }, [settings]);
+
   useEffect(() => { if (currentQuestionIndex === null) selectNextQuestion(); }, []);
   useEffect(() => { if (showToast) { const t = setTimeout(() => setShowToast(false), 3000); return () => clearTimeout(t); } }, [showToast]);
 
@@ -344,7 +359,11 @@ export default function BACsmartApp() {
     setSelectedAnswer(null);
     setShowResult(false);
     const filtered = newFilter === "Toate" ? allTestQuestions : allTestQuestions.filter((q) => q.subject === newFilter);
-    if (filtered.length > 0) setCurrentQuestionIndex(allTestQuestions.indexOf(filtered[Math.floor(Math.random() * filtered.length)]));
+    if (filtered.length > 0) {
+      setCurrentQuestionIndex(allTestQuestions.indexOf(filtered[Math.floor(Math.random() * filtered.length)]));
+    } else {
+      setCurrentQuestionIndex(null);
+    }
   };
 
   const handlePremiumClick = (type: "free" | "monthly" | "annual") => {
@@ -383,7 +402,17 @@ export default function BACsmartApp() {
       summary: generatedSummary.summary, keyPoints: generatedSummary.keyPoints, questions: generatedSummary.questions,
     };
     setSavedSummaries((prev) => [newSummary, ...prev]);
-    if (authUser) { try { await saveSummaryToDb(authUser.id, newSummary.title, newSummary.subject, newSummary.summary, newSummary.keyPoints, newSummary.questions, uploadedFile.name); } catch (error) { console.error("Error saving summary:", error); } }
+    if (authUser) {
+      try {
+        const dbRecord = await saveSummaryToDb(authUser.id, newSummary.title, newSummary.subject, newSummary.summary, newSummary.keyPoints, newSummary.questions, uploadedFile.name);
+        // Replace local Date.now() ID with real DB UUID for correct deletion
+        if (dbRecord?.id) {
+          setSavedSummaries((prev) => prev.map((s) =>
+            s.id === newSummary.id ? { ...s, id: String(dbRecord.id) as unknown as number } : s
+          ));
+        }
+      } catch (error) { console.error("Error saving summary:", error); }
+    }
     setGeneratedSummary(null);
     setUploadedFile(null);
     showToastMessage("Rezumat salvat!");
@@ -391,7 +420,7 @@ export default function BACsmartApp() {
 
   const deleteSummary = async (id: number) => {
     setSavedSummaries((prev) => prev.filter((s) => s.id !== id));
-    if (authUser) { try { await deleteSummaryFromDb(String(id)); } catch (error) { console.error("Error deleting summary:", error); } }
+    if (authUser) { try { await deleteSummaryFromDb(String(id), authUser.id); } catch (error) { console.error("Error deleting summary:", error); } }
     showToastMessage("Rezumat sters");
   };
 
@@ -452,7 +481,10 @@ export default function BACsmartApp() {
     setSavedQuizzes((prev) => [quizData as SavedQuiz, ...prev]);
     if (authUser) {
       try {
-        await saveQuiz(authUser.id, title, documentQuizFile.name, docQuizDifficulty, generatedQuizQuestions, docQuizScore, generatedQuizQuestions.length);
+        const dbQuiz = await saveQuiz(authUser.id, title, documentQuizFile.name, docQuizDifficulty, generatedQuizQuestions, docQuizScore, generatedQuizQuestions.length);
+        if (dbQuiz?.id) {
+          setSavedQuizzes((prev) => prev.map((q) => q.id === quizData.id ? { ...q, id: dbQuiz.id } : q));
+        }
       } catch (e) { console.error("Error saving quiz:", e); }
     }
   };
@@ -484,7 +516,7 @@ export default function BACsmartApp() {
   const deleteSavedQuiz = async (id: string) => {
     setSavedQuizzes((prev) => prev.filter((q) => q.id !== id));
     if (authUser) {
-      try { await deleteQuiz(id); } catch (e) { console.error("Error deleting quiz:", e); }
+      try { await deleteQuiz(id, authUser.id); } catch (e) { console.error("Error deleting quiz:", e); }
     }
     showToastMessage("Test șters");
   };

@@ -97,7 +97,11 @@ export const signInWithGoogle = async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: 'https://v0-bacsmart-app-design.vercel.app/auth/callback'
+      redirectTo: process.env.NEXT_PUBLIC_SITE_URL
+        ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+        : (typeof window !== 'undefined'
+          ? `${window.location.origin}/auth/callback`
+          : 'https://v0-bacsmart-app-design.vercel.app/auth/callback')
     }
   })
   if (error) throw error
@@ -261,9 +265,11 @@ export const getSummaries = async (userId: string) => {
   return data as Summary[]
 }
 
-export const deleteSummary = async (summaryId: string) => {
+export const deleteSummary = async (summaryId: string, userId?: string) => {
   if (!supabase) return
-  const { error } = await supabase.from("summaries").delete().eq("id", summaryId)
+  let query = supabase.from("summaries").delete().eq("id", summaryId)
+  if (userId) query = query.eq("user_id", userId)
+  const { error } = await query
   if (error) throw error
 }
 
@@ -290,17 +296,29 @@ export const getQuizzes = async (userId: string) => {
   return data as SavedQuiz[]
 }
 
-export const deleteQuiz = async (quizId: string) => {
+export const deleteQuiz = async (quizId: string, userId?: string) => {
   if (!supabase) return
-  const { error } = await supabase.from("quizzes").delete().eq("id", quizId)
+  let query = supabase.from("quizzes").delete().eq("id", quizId)
+  if (userId) query = query.eq("user_id", userId)
+  const { error } = await query
   if (error) throw error
 }
 
+const ALLOWED_PROFILE_FIELDS = ["full_name", "avatar_url", "bac_profile", "selected_subjects"];
+
 export const updateProfile = async (userId: string, data: Record<string, any>) => {
   if (!supabase) return null
+  // Only allow updating safe fields
+  const safeData: Record<string, any> = {};
+  for (const key of Object.keys(data)) {
+    if (ALLOWED_PROFILE_FIELDS.includes(key)) {
+      safeData[key] = data[key];
+    }
+  }
+  if (Object.keys(safeData).length === 0) return null
   const { data: updatedProfile } = await supabase
     .from("profiles")
-    .update(data)
+    .update(safeData)
     .eq("id", userId)
     .select()
     .single()

@@ -11,8 +11,15 @@ export async function POST(req: Request) {
 
     const { subject, messages } = await req.json();
 
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: "No messages provided" }, { status: 400 });
+    if (!messages || !Array.isArray(messages) || messages.length > 100) {
+      return NextResponse.json({ error: "No messages provided or too many messages" }, { status: 400 });
+    }
+    // Validate and truncate message texts
+    for (const msg of messages) {
+      if (typeof msg.text !== "string") {
+        return NextResponse.json({ error: "Invalid message format" }, { status: 400 });
+      }
+      msg.text = msg.text.slice(0, 4000); // Max 4000 chars per message
     }
 
     const subjectName = subject || "Bacalaureat";
@@ -110,7 +117,7 @@ Răspunde la întrebarea elevului ținând cont de materia ${subjectName}.`;
     }
 
     if (!data) {
-      return NextResponse.json({ error: `AI API error: ${lastError.slice(0, 200)}` }, { status: 500 });
+      return NextResponse.json({ error: "AI service unavailable. Please try again later." }, { status: 500 });
     }
 
     const text = data.choices?.[0]?.message?.content || "Ne pare rău, nu am putut genera un răspuns.";

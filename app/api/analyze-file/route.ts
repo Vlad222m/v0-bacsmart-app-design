@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 
 const MAX_TEXT_INPUT = 30000; // Limita de text trimis la API
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 async function extractText(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
   const name = file.name.toLowerCase();
   const type = file.type;
+  const safeName = file.name.replace(/[<>&"']/g, "");
 
   if (type === "text/plain" || name.endsWith(".txt")) {
     return buffer.toString("utf-8").slice(0, MAX_TEXT_INPUT);
@@ -19,7 +21,7 @@ async function extractText(file: File): Promise<string> {
       const data = await pdfParse(buffer);
       return data.text.slice(0, MAX_TEXT_INPUT);
     } catch {
-      return `[Document PDF: "${file.name}"]`;
+      return `[Document PDF: "${safeName}"]`;
     }
   }
 
@@ -32,7 +34,7 @@ async function extractText(file: File): Promise<string> {
       const result = await mammoth.extractRawText({ buffer });
       return result.value.slice(0, MAX_TEXT_INPUT);
     } catch {
-      return `[Document Word: "${file.name}"]`;
+      return `[Document Word: "${safeName}"]`;
     }
   }
 
@@ -44,15 +46,15 @@ async function extractText(file: File): Promise<string> {
       });
       const text = data.text.trim();
       if (text.length > 20) {
-        return `[Text extras din imaginea "${file.name}" prin OCR]:\n${text.slice(0, MAX_TEXT_INPUT)}`;
+        return `[Text extras din imaginea "${safeName}" prin OCR]:\n${text.slice(0, MAX_TEXT_INPUT)}`;
       }
     } catch {
       // OCR a eșuat, fallback la nume fișier
     }
-    return `[Imagine: "${file.name}"]`;
+    return `[Imagine: "${safeName}"]`;
   }
 
-  return `[Fișier: "${file.name}" de tip ${type || "necunoscut"}]`;
+  return `[Fișier: "${safeName}" de tip ${type || "necunoscut"}]`;
 }
 
 export async function POST(req: Request) {
@@ -67,6 +69,9 @@ export async function POST(req: Request) {
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
     }
 
     const numQuestions =
@@ -131,7 +136,7 @@ Răspunde DOAR cu JSON valid, fără text în afară, fără backticks:
 
     if (!data) {
       return NextResponse.json(
-        { error: `AI API error: ${lastError.slice(0, 200)}` },
+        { error: "AI service unavailable. Please try again later." },
         { status: 500 }
       );
     }

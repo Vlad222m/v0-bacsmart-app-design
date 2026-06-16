@@ -1,6 +1,22 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
+// Rate limiting simplu (in-memory, se resetează la restart)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60_000; // 1 minut
+const RATE_LIMIT_MAX = 30; // max 30 request-uri per minut per utilizator
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= RATE_LIMIT_MAX;
+}
+
 /**
  * Verifică dacă request-ul are o sesiune Supabase validă.
  * Returnează { userId } sau un NextResponse de eroare.
@@ -60,6 +76,14 @@ export async function requireAuth(req: Request): Promise<
     return NextResponse.json(
       { error: "Unauthorized — invalid session" },
       { status: 401 }
+    );
+  }
+
+  // Rate limit check
+  if (!checkRateLimit(data.user.id)) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429 }
     );
   }
 
