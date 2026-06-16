@@ -62,6 +62,10 @@ export default function BACsmartApp() {
 
   const [dailyUsage, setDailyUsage] = useState<{ chat: number; answers: number; summaries: number; quizzes: number }>({ chat: 0, answers: 0, summaries: 0, quizzes: 0 });
 
+  const incrementLocalUsage = (field: "chat" | "answers" | "summaries" | "quizzes") => {
+    setDailyUsage((prev) => ({ ...prev, [field]: prev[field] + 1 }));
+  };
+
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [selectedSubject, setSelectedSubject] = useState(subjects[0]);
   const [messages, setMessages] = useState<Message[]>([
@@ -375,6 +379,7 @@ export default function BACsmartApp() {
       const aiMsg: Message = { id: messages.length + 2, text: aiResponse, isUser: false };
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
+      incrementLocalUsage("chat");
       if (authUser) { try { await saveChatMessage(authUser.id, selectedSubject.name, "assistant", aiResponse); } catch (error) { console.error("Error saving chat message:", error); } }
     } catch (error) {
       console.error("Error generating AI response:", error);
@@ -393,6 +398,7 @@ export default function BACsmartApp() {
       [question.subject]: { correct: (subjectScores[question.subject]?.correct || 0) + (isCorrect ? 1 : 0), total: (subjectScores[question.subject]?.total || 0) + 1 },
     };
     setSubjectScores(updatedScores);
+    incrementLocalUsage("answers");
     // Persist to localStorage
     try { localStorage.setItem("bacsmart_scores", JSON.stringify(updatedScores)); } catch {}
     if (authUser) { try { await saveTestScore(authUser.id, question.subject, isCorrect ? 1 : 0, 1); } catch (e) { console.error("DB saveTestScore error:", e); } }
@@ -448,6 +454,7 @@ export default function BACsmartApp() {
       const response = await apiFetch("/api/generate-summary", { method: "POST", body: formData });
       const data = await response.json();
       if (!response.ok || !data.summary) throw new Error(data.error || "Failed to generate summary");
+      incrementLocalUsage("summaries");
       setGeneratedSummary({ fileName: data.fileName || uploadedFile.name, summary: data.summary, keyPoints: data.keyPoints || [], questions: data.questions || [] });
     } catch (error) {
       console.error("Error generating summary:", error);
@@ -509,6 +516,7 @@ export default function BACsmartApp() {
       const response = await apiFetch("/api/analyze-file", { method: "POST", body: formData });
       const data = await response.json();
       if (!response.ok || !data.questions) throw new Error(data.error || "Failed to generate quiz");
+      incrementLocalUsage("quizzes");
       setGeneratedQuizQuestions(data.questions);
       setCurrentDocQuizIndex(0);
       setDocQuizSelectedAnswer(null);
