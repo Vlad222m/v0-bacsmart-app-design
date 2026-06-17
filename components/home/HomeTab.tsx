@@ -87,7 +87,7 @@ export default function HomeTab({
           <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
             Buna, {firstName}
           </h1>
-          <p className="text-sm text-muted-foreground">Hai sa invatam!</p>
+          <p className="text-sm text-muted-foreground">Hai să învățăm!</p>
         </div>
         <div className="relative">
           <button
