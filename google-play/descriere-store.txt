@@ -1,0 +1,94 @@
+=== GOOGLE PLAY STORE LISTING ===
+
+APLICATIA: BACsmart - Pregatire BAC 2026
+
+== TITLE (max 50 caractere) ==
+BACsmart - Pregatire BAC 2026
+
+== SHORT DESCRIPTION (max 80 caractere) ==
+Invata inteligent pentru BAC cu AI, teste si rezumate
+
+== FULL DESCRIPTION (max 4000 caractere) ==
+BACsmart este aplicatia esentiala pentru pregatirea examenului de Bacalaureat din Romania. Conceputa special pentru elevii de liceu, combina inteligenta artificiala cu un program structurat de invatare.
+
+CE OFERA BACSMART?
+
+🤖 PROFESOR AI
+Pune intrebari oricand si primeste raspunsuri detaliate de la asistentul AI specializat pe fiecare materie. Explica orice concept, de la analiza matematica la figurile de stil.
+
+📝 TESTE PRACTICE
+Mii de intrebari tip grila pentru toate materiile de BAC:
+• Matematica
+• Romana
+• Istorie
+• Geografie
+• Biologie
+• Fizica
+• Chimie
+• Informatica
+• Logica
+
+📸 REZUMATE DIN DOCUMENTE
+Fotografiaza pagini din manuale sau incarca documente PDF/Word si obtine instantaneu:
+• Rezumat clar si concis
+• Puncte cheie esentiale
+• Intrebari pentru verificare
+
+📊 QUIZ-URI DIN DOCUMENTE
+Transforma orice document in intrebari grila cu explicatii. Perfect pentru recapitulare rapida.
+
+📈 PROGRES DETALIAT
+Urmareste-ti evolutia la fiecare materie:
+• Scoruri la teste
+• Procentaj de raspunsuri corecte
+• Statistici detaliate
+• Zile consecutive de studiu
+
+🎯 PLAN PERSONALIZAT
+Selecteaza profilul tau BAC (Real, Uman, Stiinte, Info) si aplicatia se adapteaza automat, aratand doar materiile relevante pentru tine.
+
+PLANURI:
+
+🆓 GRATUIT
+• 10 mesaje chat AI/zi
+• 10 raspunsuri la teste/zi
+• 1 rezumat/zi
+• 1 quiz din document/zi
+
+⭐ PREMIUM
+• Mesaje AI nelimitate
+• Teste si raspunsuri nelimitate
+• Rezumate si quiz-uri nelimitate
+• Fara reclame
+• Suport prioritar
+• Prima luna doar 19 lei, apoi 49 lei/luna
+• 5 zile trial gratuit
+
+🌟 ANUAL
+• Tot ce include Premium
+• Economisesti 168 lei pe an
+• 35 lei/luna (facturat anual 420 lei)
+• Pret blocat, fara cresteri
+
+DE CE BACSMART?
+
+• Conținut specializat pe programa BAC
+• Interfata moderna si intuitiva
+• Fara reclame care deranjeaza
+• Invatare asistata de AI
+• Accesibil oricand, pe telefon sau tableta
+
+Pregateste-te eficient pentru BAC cu BACsmart!
+
+== CUVINTE CHEIE (max 20, separate prin virgula) ==
+bac, bacalaureat, romania, examen, liceu, invatare, matematica, romana, istorie, geografie, biologie, fizica, chimie, informatica, logica, test, grila, ai, inteligenta artificiala, educatie
+
+== CATEGORIE ==
+Education
+
+== EVALUARE CONTINUT (IARC) ==
+PEGI 3 / Everyone
+
+== CONTACT ==
+Email: support@bacsmart.ro
+Website: https://v0-bacsmart-app-design.vercel.app
