@@ -9,10 +9,10 @@ function StatCard({ icon, value, label, color }: { icon: React.ReactNode; value:
       <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style={{ backgroundColor: `${color}20`, color }}>
         {icon}
       </div>
-      <p className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
+      <p className="text-lg sm:text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
         {value}
       </p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-[10px] sm:text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -153,8 +153,8 @@ export default function HomeTab({
         </div>
       </div>
 
-      {/* Stats Cards - Acum cu date reale */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <StatCard icon={<Flame className="w-4 h-4" />} value={String(streakDays)} label="Zile activ" color="#FF6B35" />
         <StatCard icon={<BookOpen className="w-4 h-4" />} value={String(totalQuestions)} label="Intrebari" color="#4ECDC4" />
         <StatCard icon={<Zap className="w-4 h-4" />} value={totalQuestions > 0 ? `${avgAccuracy}%` : "0%"} label="Medie" color="#A855F7" />
@@ -195,7 +195,7 @@ export default function HomeTab({
         <h2 className="font-bold text-lg mb-3 text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
           Materii
         </h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
           {subjectsState.map((subject) => (
             <SubjectCard key={subject.name} subject={subject} onClick={() => onSubjectClick(subject)} />
           ))}
@@ -213,7 +213,7 @@ export default function HomeTab({
               Upgrade →
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="bg-muted/50 rounded-lg px-3 py-2">
               <p className="text-xs text-muted-foreground">Chat AI</p>
               <p className="text-sm font-bold text-foreground">

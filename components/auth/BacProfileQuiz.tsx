@@ -157,7 +157,7 @@ export default function BacProfileQuiz({ onComplete, initialProfile, initialSubj
             </div>
 
             {/* Profile cards */}
-            <div className="space-y-3">
+            <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
               {BAC_PROFILES.slice(0, 5).map((p) => (
                 <button
                   key={p.id}
@@ -247,7 +247,7 @@ export default function BacProfileQuiz({ onComplete, initialProfile, initialSubj
             <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider font-medium">
               {selectedProfile === "custom" ? "Toate materiile" : "Materii opționale"}
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {toggleableSubjects.map((subject) => {
                 const isSelected = selectedSubjects.includes(subject.name);
                 return (

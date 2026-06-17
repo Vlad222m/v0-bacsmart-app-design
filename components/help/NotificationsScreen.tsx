@@ -26,7 +26,7 @@ export default function NotificationsScreen({
 
   return (
     <div className="fixed inset-0 bg-[#08080D] z-[150] animate-in slide-in-from-right duration-300">
-      <div className="h-full flex flex-col p-4 max-w-md mx-auto">
+      <div className="h-full flex flex-col p-4 max-w-md sm:max-w-lg mx-auto">
         {/* Header */}
         <button onClick={onBack} className="flex items-center gap-2 text-foreground mb-6 hover:text-primary transition-colors">
           <ArrowLeft className="w-5 h-5" />

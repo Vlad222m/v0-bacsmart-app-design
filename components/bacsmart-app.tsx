@@ -919,7 +919,7 @@ export default function BACsmartApp() {
       {/* Saved Quiz List Screen */}
       {showSavedQuizList && !generatedQuizQuestions.length && (
         <div className="fixed inset-0 bg-[#08080D] z-[150] p-4">
-          <div className="h-full flex flex-col max-w-md mx-auto">
+          <div className="h-full flex flex-col max-w-md sm:max-w-lg mx-auto">
             <div className="flex items-center justify-between mb-6">
               <button onClick={() => setShowSavedQuizList(false)} className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
                 <ArrowLeft className="w-5 h-5" />
@@ -991,7 +991,7 @@ export default function BACsmartApp() {
       {/* Document Quiz Question Screen */}
       {generatedQuizQuestions.length > 0 && currentDocQuizIndex < generatedQuizQuestions.length && (
         <div className="fixed inset-0 bg-[#08080D] z-[150] p-4">
-          <div className="max-w-md mx-auto flex items-center justify-center h-full">
+          <div className="max-w-md sm:max-w-lg mx-auto flex items-center justify-center h-full">
             <DocumentQuizQuestionScreen
               question={generatedQuizQuestions[currentDocQuizIndex]} currentIndex={currentDocQuizIndex}
               totalQuestions={generatedQuizQuestions.length} selectedAnswer={docQuizSelectedAnswer}
@@ -1002,11 +1002,11 @@ export default function BACsmartApp() {
         </div>
       )}
 
-      {/* Mobile Phone Frame */}
-      <div className="relative w-[390px] h-[844px] bg-[#08080D] rounded-[50px] border-[8px] border-[#1A1A2E] shadow-2xl overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150px] h-[35px] bg-[#08080D] rounded-b-3xl z-50" />
-        <div className="h-full flex flex-col pt-10">
-          <div className="flex-1 overflow-y-auto mobile-scrollbar px-4 pb-24">
+      {/* Mobile Phone Frame — responsive: phone 390px, tablet 7" ~600px, tablet 10" ~800px */}
+      <div className="relative w-full max-w-[390px] sm:max-w-[600px] md:max-w-[800px] bg-[#08080D] rounded-[32px] sm:rounded-[40px] md:rounded-[50px] border-[6px] sm:border-[7px] md:border-[8px] border-[#1A1A2E] shadow-2xl overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] sm:w-[140px] md:w-[150px] h-[28px] sm:h-[32px] md:h-[35px] bg-[#08080D] rounded-b-3xl z-50 hidden sm:block" />
+        <div className="h-full flex flex-col pt-8 sm:pt-9 md:pt-10">
+          <div className="flex-1 overflow-y-auto mobile-scrollbar px-3 sm:px-4 md:px-6 lg:px-8 pb-24">
             {activeTab === "home" && (
               <HomeTab
                 subjectsState={subjectsState} subjectScores={subjectScores}
@@ -1069,7 +1069,7 @@ export default function BACsmartApp() {
           </div>
 
           {/* Bottom Tab Navigation */}
-          <div className="absolute bottom-0 left-0 right-0 bg-[#0F0F1A] border-t border-[#2A2A40] px-1 py-3 pb-8">
+          <div className="absolute bottom-0 left-0 right-0 bg-[#0F0F1A] border-t border-[#2A2A40] px-1 py-2 sm:py-3 pb-6 sm:pb-8">
             <div className="flex justify-around items-center">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -1078,10 +1078,10 @@ export default function BACsmartApp() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex flex-col items-center gap-1 px-2 py-1 rounded-xl transition-all ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`flex flex-col items-center gap-0.5 sm:gap-1 px-1 sm:px-2 md:px-3 py-1 rounded-xl transition-all ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
                   >
-                    <Icon className={`w-5 h-5 ${isActive ? "fill-primary/20" : ""}`} />
-                    <span className="text-[9px] font-medium">{tab.label}</span>
+                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? "fill-primary/20" : ""}`} />
+                    <span className="text-[8px] sm:text-[9px] md:text-[10px] font-medium">{tab.label}</span>
                   </button>
                 );
               })}

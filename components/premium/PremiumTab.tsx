@@ -105,7 +105,7 @@ export default function PremiumTab({ onPlanClick, currentPlan }: PremiumTabProps
       </div>
 
       {/* Plan Cards */}
-      <div className="space-y-4">
+      <div className="space-y-4 sm:grid sm:grid-cols-3 sm:gap-3 sm:space-y-0">
         {plans.map((plan) => (
           <div
             key={plan.name}

@@ -143,7 +143,7 @@ export default function RezumateTab({
       {!generatedSummary && (
         <>
           {/* Upload Buttons */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <button onClick={() => imageInputRef.current?.click()} className="bg-card rounded-xl p-4 border border-border hover:border-primary/50 transition-colors flex flex-col items-center gap-2">
               <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
                 <Camera className="w-6 h-6 text-primary" />

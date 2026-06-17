@@ -105,7 +105,7 @@ export default function ProgressTab({
       </div>
 
       {/* Stats Grid - Acum cu date reale */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
         <div className="bg-card rounded-xl p-3 border border-border text-center">
           <p className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>{totalQuestions}</p>
           <p className="text-xs text-muted-foreground">Intrebari</p>
@@ -196,7 +196,7 @@ export default function ProgressTab({
 
                 {isExpanded && (
                   <div className="px-3 pb-3 space-y-3 border-t border-border pt-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                       <div className="bg-muted/50 rounded-lg p-2">
                         <p className="text-xs text-muted-foreground">Intrebari rezolvate</p>
                         <p className="text-lg font-bold text-foreground">{score.total || 0}</p>

@@ -89,7 +89,7 @@ export default function TestsTab({
       )}
 
       {/* Quiz Buttons */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <button
           onClick={quizzesLimitReached ? onGoPremium : onOpenDocumentQuiz}
           className="group relative w-full py-3.5 rounded-2xl font-semibold bg-gradient-to-br from-primary/20 to-primary/5 text-primary hover:from-primary/30 hover:to-primary/10 border border-primary/20 hover:border-primary/40 transition-all duration-200 flex items-center justify-center gap-1 overflow-hidden"
@@ -132,7 +132,7 @@ export default function TestsTab({
             }`}
           >
             <span className="text-base">{subject.icon}</span>
-            <span className="text-[10px] truncate max-w-[60px]">{subject.name}</span>
+            <span className="text-[10px] sm:text-xs truncate max-w-[60px] sm:max-w-[80px]">{subject.name}</span>
           </button>
         ))}
       </div>

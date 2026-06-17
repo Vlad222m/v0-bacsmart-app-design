@@ -79,7 +79,7 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
 
   return (
     <div className="fixed inset-0 bg-[#08080D] flex items-center justify-center z-[200] p-4">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm sm:max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
