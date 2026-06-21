@@ -781,7 +781,7 @@ export default function BACsmartApp() {
           try { localStorage.setItem("bacsmart_quizzes", JSON.stringify(q)); } catch {}
         }
       }).catch((err) => {
-        console.error("[Quizzes] Error loading from DB:", err);
+        console.warn("[Quizzes] Error loading from DB:", err?.message || JSON.stringify(err));
         // Fallback la localStorage daca DB fail
         try {
           const local = localStorage.getItem("bacsmart_quizzes");
