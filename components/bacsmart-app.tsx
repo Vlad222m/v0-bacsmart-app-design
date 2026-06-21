@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Send, ChevronRight, Check, X, User, Settings, LogOut,
   Upload, Save, ArrowLeft, Trash2, RefreshCw, AlertTriangle,
-  HelpCircle, Camera,
+  HelpCircle, Camera, FileText,
 } from "lucide-react";
 
 import { getAllQuestions, correctToIndex } from "@/data/bac-questions";
