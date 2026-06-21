@@ -775,10 +775,22 @@ export default function BACsmartApp() {
     // Incarca din DB de fiecare data cand deschizi lista
     if (authUser) {
       getQuizzes(authUser.id).then((q) => {
-        console.log("[Quizzes] Loaded from DB:", q?.length);
-        setSavedQuizzes(q);
+        console.log("[Quizzes] Loaded from DB:", q?.length, "items");
+        if (q.length > 0) {
+          setSavedQuizzes(q);
+          try { localStorage.setItem("bacsmart_quizzes", JSON.stringify(q)); } catch {}
+        }
       }).catch((err) => {
-        console.error("[Quizzes] Error loading:", err);
+        console.error("[Quizzes] Error loading from DB:", err);
+        // Fallback la localStorage daca DB fail
+        try {
+          const local = localStorage.getItem("bacsmart_quizzes");
+          if (local) {
+            const parsed = JSON.parse(local);
+            console.log("[Quizzes] Fallback to localStorage:", parsed.length);
+            setSavedQuizzes(parsed);
+          }
+        } catch {}
       });
     }
   };
