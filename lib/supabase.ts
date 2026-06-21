@@ -149,13 +149,6 @@ export const signInWithGoogle = async () => {
     },
   });
   if (error) throw error;
-
-  // data.url = URL-ul Google OAuth (consent screen)
-  // Supabase face deja redirect pe web — nu facem nimic suplimentar
-  // Pe nativ, Custom Tab-ul se deschide și se închide automat
-};
-
-  return data;
 };
 
 export const signOut = async () => {
