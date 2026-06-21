@@ -772,8 +772,8 @@ export default function BACsmartApp() {
 
   const openSavedQuizList = () => {
     openScreen("saved-quizzes", "Teste salvate", () => setShowSavedQuizList(true));
-    // Incarca din DB doar daca nu avem deja in state
-    if (authUser && savedQuizzes.length === 0) {
+    // Incarca din DB de fiecare data cand deschizi lista
+    if (authUser) {
       getQuizzes(authUser.id).then((q) => setSavedQuizzes(q)).catch(() => {});
     }
   };
