@@ -17,7 +17,7 @@ export function FullScreenOverlay({ children, zIndex = 150 }: FullScreenOverlayP
       className="fixed inset-0 bg-background z-[150] overflow-y-auto overflow-x-hidden"
       style={{ zIndex }}
     >
-      <div className="h-full flex flex-col px-4 sm:px-6 py-4 w-full max-w-xl mx-auto">
+      <div className="h-full flex flex-col px-4 sm:px-6 py-4 w-full max-w-xl mx-auto safe-top safe-bottom">
         {children}
       </div>
     </div>
