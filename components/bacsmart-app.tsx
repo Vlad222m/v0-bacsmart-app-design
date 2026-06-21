@@ -443,41 +443,44 @@ export default function BACsmartApp() {
     window.location.replace("/");
   };
 
-  // Track active time in the app
-  const startActiveTimer = useCallback(() => {
-    if (activeTimerRef.current) clearInterval(activeTimerRef.current)
-    activeTimerRef.current = setInterval(() => {
-      activeTimeRef.current += 1 // 1 second
-      if (activeTimeRef.current % 60 === 0) { // Every 60 seconds
+  // Următoarea salvare DB pentru study minutes (evităm salvări prea dese)
+  const nextDbSaveRef = useRef(0)
+
+  // Track active time in the app — salvează în localStorage la fiecare 30s, în DB la fiecare 2 min
+  useEffect(() => {
+    // Restore din localStorage la mount
+    try {
+      const saved = localStorage.getItem("bacsmart_study_minutes_today")
+      const savedDate = localStorage.getItem("bacsmart_study_minutes_date")
+      const today = new Date().toISOString().split("T")[0]
+      if (saved && savedDate === today) {
+        activeTimeRef.current = parseInt(saved) * 60
+        setStudyMinutesToday(parseInt(saved))
+      }
+    } catch {}
+
+    const interval = setInterval(() => {
+      activeTimeRef.current += 1
+      if (activeTimeRef.current % 30 === 0) { // La fiecare 30 sec
         const mins = Math.floor(activeTimeRef.current / 60)
         setStudyMinutesToday(mins)
+        // localStorage mereu
         try {
           localStorage.setItem("bacsmart_study_minutes_today", String(mins))
           localStorage.setItem("bacsmart_study_minutes_date", new Date().toISOString().split("T")[0])
         } catch {}
-        if (authUser && mins > 0 && mins % 5 === 0) { // Save to DB every 5 min
-          addStudyMinutes(authUser.id, 5).catch(console.error)
+        // DB la fiecare 2 minute (doar daca e user logat)
+        if (authUser && mins >= nextDbSaveRef.current + 2) {
+          nextDbSaveRef.current = mins
+          addStudyMinutes(authUser.id, 2).catch(() => {
+            // Nu blocăm nimic dacă DB fails — avem localStorage backup
+          })
         }
       }
     }, 1000)
+
+    return () => clearInterval(interval)
   }, [authUser])
-
-  const stopActiveTimer = useCallback(() => {
-    if (activeTimerRef.current) {
-      clearInterval(activeTimerRef.current)
-      activeTimerRef.current = null
-    }
-  }, [])
-
-  // Restore study minutes from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("bacsmart_study_minutes_today")
-      if (saved) setStudyMinutesToday(parseInt(saved))
-    } catch {}
-    startActiveTimer()
-    return () => stopActiveTimer()
-  }, [startActiveTimer, stopActiveTimer])
 
   // Load weekly test data for progress tab
   const loadWeeklyTestData = useCallback(async () => {

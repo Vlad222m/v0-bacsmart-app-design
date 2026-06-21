@@ -427,34 +427,43 @@ export const incrementDailyUsage = async (userId: string, field: "chat_count" | 
 export const getStudyMinutes = async (userId: string): Promise<number> => {
   if (!supabase) return 0
   const today = new Date().toISOString().split("T")[0]
-  const { data, error } = await supabase
-    .from("daily_usage")
-    .select("study_minutes")
-    .eq("user_id", userId)
-    .eq("date", today)
-    .maybeSingle()
-  if (error) console.error("Error getting study minutes:", error)
-  return (data as { study_minutes: number } | null)?.study_minutes || 0
+  try {
+    const { data, error } = await supabase
+      .from("daily_usage")
+      .select("study_minutes")
+      .eq("user_id", userId)
+      .eq("date", today)
+      .maybeSingle()
+    if (error) throw error
+    return (data as { study_minutes: number } | null)?.study_minutes || 0
+  } catch {
+    return 0
+  }
 }
 
 export const addStudyMinutes = async (userId: string, minutes: number) => {
   if (!supabase) return
   const today = new Date().toISOString().split("T")[0]
-  const { data: existing } = await supabase
-    .from("daily_usage")
-    .select("id, study_minutes")
-    .eq("user_id", userId)
-    .eq("date", today)
-    .maybeSingle()
-  if (existing) {
-    await supabase
+  try {
+    const { data: existing } = await supabase
       .from("daily_usage")
-      .update({ study_minutes: (existing.study_minutes || 0) + minutes })
-      .eq("id", existing.id)
-  } else {
-    await supabase
-      .from("daily_usage")
-      .insert({ user_id: userId, date: today, study_minutes: minutes })
+      .select("id, study_minutes")
+      .eq("user_id", userId)
+      .eq("date", today)
+      .maybeSingle()
+    if (existing) {
+      await supabase
+        .from("daily_usage")
+        .update({ study_minutes: (existing.study_minutes || 0) + minutes })
+        .eq("id", existing.id)
+    } else {
+      await supabase
+        .from("daily_usage")
+        .insert({ user_id: userId, date: today, study_minutes: minutes })
+    }
+  } catch (e) {
+    // Tabela poate să nu existe încă (dacă SQL-ul nu a fost rulat) — silently ignore
+    console.warn("DB study minutes save skipped (table may not exist yet):", e)
   }
 }
 
