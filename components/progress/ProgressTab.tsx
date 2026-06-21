@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Calendar, Target, ChevronDown, Clock, Play, RotateCcw, Zap, TrendingUp, Award, BookOpen } from "lucide-react";
+import { Calendar, Target, ChevronDown, Clock, Play, RotateCcw, Zap, TrendingUp, Award, BookOpen, Star, Flame, BarChart3 } from "lucide-react";
 import type { Subject, SubjectScores } from "@/components/types";
 
 interface ProgressTabProps {
@@ -10,6 +10,94 @@ interface ProgressTabProps {
   onPracticeSubject: (subjectName: string) => void;
   showToastMessage: (msg: string) => void;
   onResetProgress: () => void;
+  weeklyTestData?: Record<string, number>;
+  studyMinutesToday?: number;
+}
+
+// Niveluri
+const LEVELS = [
+  { name: "Incepator", min: 0, icon: "🌱" },
+  { name: "Student", min: 20, icon: "📚" },
+  { name: "Cercetator", min: 50, icon: "🔍" },
+  { name: "Expert", min: 100, icon: "⭐" },
+  { name: "Maestru", min: 200, icon: "🏆" },
+];
+
+const DAY_NAMES = ["Duminica", "Luni", "Marti", "Miercuri", "Joi", "Vineri", "Sambata"];
+
+function CircularProgress({ value }: { value: number }) {
+  const [animated, setAnimated] = useState(0);
+  useEffect(() => { const t = setTimeout(() => setAnimated(value), 100); return () => clearTimeout(t); }, [value]);
+
+  const color = value >= 80 ? "#22C55E" : value >= 60 ? "#4ECDC4" : value >= 40 ? "#F59E0B" : "#FF6B35";
+
+  return (
+    <div className="relative w-28 h-28 sm:w-36 sm:h-36">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="#1A1A2E" strokeWidth="10" />
+        <circle
+          cx="50" cy="50" r="42" fill="none" stroke={color} strokeWidth="10"
+          strokeLinecap="round" strokeDasharray={`${animated * 2.64} 264`}
+          className="transition-all duration-1000 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl sm:text-3xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>{animated}%</span>
+        <span className="text-[10px] text-muted-foreground">succes</span>
+      </div>
+    </div>
+  );
+}
+
+function LevelProgressBar({ levelInfo, totalQuestions }: { levelInfo: ReturnType<typeof getLevelInfo>; totalQuestions: number }) {
+  // La nivel maxim -> aratam o bara plina cu mesaj
+  if (!levelInfo.next) {
+    return (
+      <div className="bg-card rounded-xl p-3 border border-border">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1.5">
+            <Award className="w-4 h-4 text-yellow-500" />
+            <span className="text-xs text-muted-foreground">Nivel maxim atins! {levelInfo.current.icon}</span>
+          </div>
+          <span className="text-xs text-green-500 font-medium">Complet</span>
+        </div>
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-yellow-500 to-yellow-300 rounded-full" style={{ width: "100%" }} />
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1">{totalQuestions} intrebari rezolvate</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card rounded-xl p-3 border border-border">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-1.5">
+          <Award className="w-4 h-4 text-primary" />
+          <span className="text-xs text-muted-foreground">Urmatorul: {levelInfo.next.name} {levelInfo.next.icon}</span>
+        </div>
+        <span className="text-xs text-muted-foreground">{levelInfo.progress}%</span>
+      </div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500" style={{ width: `${Math.max(2, levelInfo.progress)}%` }} />
+      </div>
+      <p className="text-[10px] text-muted-foreground mt-1">
+        Mai ai nevoie de <strong>{levelInfo.next.min - totalQuestions}</strong> intrebari pentru nivelul urmator
+      </p>
+    </div>
+  );
+}
+
+function getLevelInfo(totalQuestions: number) {
+  let currentLevel = LEVELS[0];
+  for (const level of LEVELS) {
+    if (totalQuestions >= level.min) currentLevel = level;
+  }
+  const nextLevel = LEVELS.find(l => l.min > totalQuestions);
+  const progressToNext = nextLevel
+    ? Math.round(((totalQuestions - currentLevel.min) / (nextLevel.min - currentLevel.min)) * 100)
+    : 100;
+  return { current: currentLevel, next: nextLevel || null, progress: Math.min(100, Math.max(0, progressToNext)) };
 }
 
 export default function ProgressTab({
@@ -18,11 +106,13 @@ export default function ProgressTab({
   onPracticeSubject,
   showToastMessage,
   onResetProgress,
+  weeklyTestData = {},
+  studyMinutesToday = 0,
 }: ProgressTabProps) {
-  const [animatedProgress, setAnimatedProgress] = useState(0);
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
-  // Stats reale din scoruri
+  // Stats reale
   const stats = useMemo(() => {
     const totalCorrect = Object.values(subjectScores).reduce((acc, s) => acc + (s.correct || 0), 0);
     const totalQuestions = Object.values(subjectScores).reduce((acc, s) => acc + (s.total || 0), 0);
@@ -35,42 +125,37 @@ export default function ProgressTab({
     return { totalCorrect, totalQuestions, totalTests, accuracy, subjectsActive };
   }, [subjectScores, subjects]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setAnimatedProgress(stats.accuracy), 100);
-    return () => clearTimeout(timer);
-  }, [stats.accuracy]);
+  const levelInfo = useMemo(() => getLevelInfo(stats.totalQuestions), [stats.totalQuestions]);
 
-  const getSubjectAccuracy = (subjectName: string) => {
-    const score = subjectScores[subjectName];
-    if (!score || score.total === 0) return null;
-    return Math.round((score.correct / score.total) * 100);
-  };
-
-  // Weekly activity chart pe baza test_scores din ultimele 7 zile
-  const weeklyActivity = useMemo(() => {
-    const days = ["D", "L", "Ma", "Mi", "J", "V", "S"];
+  // Weekly activity din date reale test_scores
+  const weeklyDays = useMemo(() => {
     const now = new Date();
-    const dayNames = ["Duminica", "Luni", "Marti", "Miercuri", "Joi", "Vineri", "Sambata"];
-    const todayIdx = now.getDay(); // 0=Sunday
+    const days: { key: string; label: string; short: string; questions: number; isToday: boolean }[] = [];
 
-    // Generam activitate din scoruri: fiecare test = ~5 min
-    const totalTestsFromScores = stats.totalQuestions;
-    const avgPerDay = Math.max(1, Math.ceil(totalTestsFromScores / 7));
+    const roDayNames = ["D", "L", "Ma", "Mi", "J", "V", "S"];
 
-    return days.map((day, i) => {
-      // i e index in array: 0=D (Sunday), 1=L (Monday) etc.
-      // todayIdx e ziua curenta 0=Sunday
-      const isToday = i === todayIdx;
-      // Cat de activ a fost utilizatorul in ziua asta: proportional cu scorurile
-      const dayQuestions = Math.round(totalTestsFromScores * (0.08 + Math.random() * 0.06));
-      const minutes = Math.max(0, Math.round(dayQuestions * 5)); // ~5 min per intrebare
-      return { day, minutes, isToday, label: dayNames[i] };
-    });
-  }, [stats.totalQuestions]);
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateKey = d.toISOString().split("T")[0];
+      const dayOfWeek = d.getDay();
+      const isToday = i === 0;
 
-  const maxMinutes = Math.max(...weeklyActivity.map((d) => d.minutes), 1);
+      days.push({
+        key: dateKey,
+        label: DAY_NAMES[dayOfWeek],
+        short: roDayNames[dayOfWeek],
+        questions: weeklyTestData[dateKey] || 0,
+        isToday,
+      });
+    }
 
-  // Obiective dinamice reale
+    return days;
+  }, [weeklyTestData]);
+
+  const maxQuestions = Math.max(...weeklyDays.map(d => d.questions), 1);
+
+  // Goals
   const goals = useMemo(() => {
     const subjectsWithProgress = subjects.filter(s => {
       const score = subjectScores[s.name];
@@ -80,10 +165,10 @@ export default function ProgressTab({
     return [
       {
         icon: TrendingUp,
-        title: `${stats.totalTests} / 100 teste`,
-        label: "Teste complete",
+        title: `${stats.totalTests} teste`,
+        label: "Teste completate",
         current: stats.totalTests,
-        target: 100,
+        target: Math.max(stats.totalTests + 50, 100),
         color: "text-blue-500",
       },
       {
@@ -96,7 +181,7 @@ export default function ProgressTab({
       },
       {
         icon: Zap,
-        title: `${stats.accuracy}% acuratete`,
+        title: `${stats.accuracy}%`,
         label: "Rata de succes",
         current: stats.accuracy,
         target: 90,
@@ -105,158 +190,154 @@ export default function ProgressTab({
     ];
   }, [subjects, subjectScores, stats]);
 
-  // Nivelul utilizatorului bazat pe total intrebari
-  const levelInfo = useMemo(() => {
-    const levels = [
-      { name: "Incepator", min: 0, icon: "🌱" },
-      { name: "Student", min: 20, icon: "📚" },
-      { name: "Cercetator", min: 50, icon: "🔍" },
-      { name: "Expert", min: 100, icon: "⭐" },
-      { name: "Maestru", min: 200, icon: "🏆" },
-    ];
-    let currentLevel = levels[0];
-    for (const level of levels) {
-      if (stats.totalQuestions >= level.min) currentLevel = level;
-    }
-    const nextLevel = levels.find(l => l.min > stats.totalQuestions);
-    const progressToNext = nextLevel
-      ? Math.round(((stats.totalQuestions - currentLevel.min) / (nextLevel.min - currentLevel.min)) * 100)
-      : 100;
-    return { current: currentLevel, next: nextLevel, progress: Math.min(100, progressToNext) };
-  }, [stats.totalQuestions]);
+  const getSubjectAccuracy = (subjectName: string) => {
+    const score = subjectScores[subjectName];
+    if (!score || score.total === 0) return null;
+    return Math.round((score.correct / score.total) * 100);
+  };
+
+  const formatTime = (minutes: number) => {
+    if (minutes < 1) return "< 1 min";
+    if (minutes < 60) return `${minutes} min`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  };
+
+  // Total study time
+  const totalStudyTime = useMemo(() => {
+    let total = 0;
+    Object.keys(weeklyTestData).forEach(key => {
+      total += weeklyTestData[key] * 0.5; // ~30 sec per question
+    });
+    return Math.round(total / 5) * 5 + studyMinutesToday; // round to 5 min + today's tracked time
+  }, [weeklyTestData, studyMinutesToday]);
 
   return (
-    <div className="space-y-5 pt-2 pb-4">
+    <div className="space-y-4 pt-2 pb-4">
       {/* Header cu nivel */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
-          Rata de Succes
-        </h1>
+        <div>
+          <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
+            Rata de Succes
+          </h1>
+          <p className="text-xs text-muted-foreground">Progresul tau in aplicatie</p>
+        </div>
         <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-1.5">
           <span className="text-lg">{levelInfo.current.icon}</span>
           <span className="text-sm font-medium text-foreground">{levelInfo.current.name}</span>
         </div>
       </div>
 
-      {/* Progress to next level */}
-      {levelInfo.next && (
-        <div className="bg-card rounded-xl p-3 border border-border">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Urmatorul nivel: {levelInfo.next.name} {levelInfo.next.icon}</span>
-            </div>
-            <span className="text-xs text-muted-foreground">{levelInfo.progress}%</span>
-          </div>
-          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500" style={{ width: `${levelInfo.progress}%` }} />
-          </div>
-        </div>
-      )}
+      {/* Level Progress */}
+      <LevelProgressBar levelInfo={levelInfo} totalQuestions={stats.totalQuestions} />
 
-      {/* Circular Progress - Acuratete reala */}
-      <div className="bg-card rounded-2xl p-6 border border-border flex flex-col items-center">
-        <div className="relative w-36 h-36">
-          <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="#1A1A2E" strokeWidth="12" />
-            <circle
-              cx="50" cy="50" r="42" fill="none" stroke="url(#progressGradient)" strokeWidth="12"
-              strokeLinecap="round" strokeDasharray={`${animatedProgress * 2.64} 264`}
-              className="transition-all duration-1000 ease-out"
-            />
-            <defs>
-              <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#FF6B35" /><stop offset="100%" stopColor="#4ECDC4" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-3xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>{animatedProgress}%</span>
-            <span className="text-xs text-muted-foreground">succes</span>
-          </div>
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        {/* Circular Accuracy */}
+        <div className="bg-card rounded-2xl p-4 sm:p-5 border border-border flex flex-col items-center justify-center col-span-2 sm:col-span-1">
+          <CircularProgress value={stats.accuracy} />
+          <p className="text-xs text-muted-foreground mt-2 text-center">
+            {stats.totalCorrect} corecte din {stats.totalQuestions} intrebari
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">Din {stats.totalQuestions} intrebari, {stats.totalCorrect} corecte</p>
-      </div>
 
-      {/* Stats Grid - toate din date reale */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        <div className="bg-card rounded-xl p-3 border border-border text-center">
-          <p className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>{stats.totalQuestions}</p>
-          <p className="text-xs text-muted-foreground">Intrebari</p>
-        </div>
-        <div className="bg-card rounded-xl p-3 border border-border text-center">
-          <p className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>{stats.totalTests}</p>
-          <p className="text-xs text-muted-foreground">Teste date</p>
-        </div>
-        <div className="bg-card rounded-xl p-3 border border-border text-center">
-          <p className="text-xl font-bold text-green-500" style={{ fontFamily: "var(--font-syne)" }}>{stats.totalCorrect}</p>
-          <p className="text-xs text-muted-foreground">Corecte</p>
-        </div>
-        <div className="bg-card rounded-xl p-3 border border-border text-center">
-          <p className="text-xl font-bold text-red-400" style={{ fontFamily: "var(--font-syne)" }}>{stats.totalQuestions - stats.totalCorrect}</p>
-          <p className="text-xs text-muted-foreground">Gresite</p>
+        {/* Quick stats */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 col-span-2 sm:col-span-1">
+          <div className="bg-card rounded-xl p-3 border border-border flex flex-col items-center justify-center">
+            <Flame className="w-5 h-5 text-orange-500 mb-1" />
+            <p className="text-lg font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>{stats.totalQuestions}</p>
+            <p className="text-[10px] text-muted-foreground">Intrebari</p>
+          </div>
+          <div className="bg-card rounded-xl p-3 border border-border flex flex-col items-center justify-center">
+            <BookOpen className="w-5 h-5 text-blue-500 mb-1" />
+            <p className="text-lg font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>{stats.totalTests}</p>
+            <p className="text-[10px] text-muted-foreground">Teste</p>
+          </div>
+          <div className="bg-card rounded-xl p-3 border border-border flex flex-col items-center justify-center">
+            <BarChart3 className="w-5 h-5 text-green-500 mb-1" />
+            <p className="text-lg font-bold text-green-500" style={{ fontFamily: "var(--font-syne)" }}>{stats.totalCorrect}</p>
+            <p className="text-[10px] text-muted-foreground">Corecte</p>
+          </div>
+          <div className="bg-card rounded-xl p-3 border border-border flex flex-col items-center justify-center">
+            <Zap className="w-5 h-5 text-red-400 mb-1" />
+            <p className="text-lg font-bold text-red-400" style={{ fontFamily: "var(--font-syne)" }}>{stats.totalQuestions - stats.totalCorrect}</p>
+            <p className="text-[10px] text-muted-foreground">Gresite</p>
+          </div>
         </div>
       </div>
 
-      {/* Materii active */}
+      {/* Streak + Study Time */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-card rounded-xl p-3 border border-border flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center shrink-0">
+            <Flame className="w-5 h-5 text-orange-500" />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>--</p>
+            <p className="text-[10px] text-muted-foreground">Streak zile</p>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl p-3 border border-border flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>{formatTime(studyMinutesToday)}</p>
+            <p className="text-[10px] text-muted-foreground">Azi studiat</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Weekly Activity - date reale */}
       <div className="bg-card rounded-xl p-4 border border-border">
         <div className="flex items-center gap-2 mb-3">
-          <BookOpen className="w-4 h-4 text-primary" />
-          <h3 className="font-bold text-foreground text-sm" style={{ fontFamily: "var(--font-syne)" }}>Materii active</h3>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {subjects.map((subject) => {
-            const score = subjectScores[subject.name];
-            const isActive = score && score.total > 0;
-            const accuracy = getSubjectAccuracy(subject.name);
-            return (
-              <div
-                key={subject.name}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs ${
-                  isActive
-                    ? "bg-card border border-border text-foreground"
-                    : "bg-muted/30 text-muted-foreground/50"
-                }`}
-              >
-                <span>{subject.icon}</span>
-                <span>{subject.name}</span>
-                {isActive && accuracy !== null && (
-                  <span className={`font-medium ${
-                    accuracy >= 70 ? "text-green-500" : accuracy >= 50 ? "text-yellow-500" : "text-red-400"
-                  }`}>
-                    {accuracy}%
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Weekly Activity Chart - dinamica pe baza intrebarilor */}
-      <div className="bg-card rounded-xl p-4 border border-border">
-        <div className="flex items-center gap-2 mb-4">
           <Calendar className="w-4 h-4 text-primary" />
           <h3 className="font-bold text-foreground text-sm" style={{ fontFamily: "var(--font-syne)" }}>Activitate saptamanala</h3>
         </div>
-        <div className="flex items-end justify-between gap-2 h-24">
-          {weeklyActivity.map((day, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className={`w-full rounded-t transition-all duration-500 ${day.isToday ? "bg-primary" : "bg-muted"}`}
-                style={{ height: `${Math.max(8, (day.minutes / maxMinutes) * 100)}%`, minHeight: "8px" }}
-              />
-              <span className={`text-xs ${day.isToday ? "text-primary font-medium" : "text-muted-foreground"}`}>{day.day}</span>
-              <span className="text-[9px] text-muted-foreground/60">{day.minutes > 0 ? `${day.minutes}m` : ""}</span>
-            </div>
-          ))}
+        <div className="flex items-end justify-between gap-1.5 sm:gap-2 h-28">
+          {weeklyDays.map((day, i) => {
+            const height = Math.max(6, (day.questions / maxQuestions) * 100);
+            const isSelected = selectedDay === i;
+            return (
+              <button
+                key={day.key}
+                onClick={() => setSelectedDay(isSelected ? null : i)}
+                className={`flex-1 flex flex-col items-center gap-1 transition-all ${isSelected ? "scale-105" : ""}`}
+              >
+                <div className="relative w-full flex flex-col items-center">
+                  {isSelected && day.questions > 0 && (
+                    <div className="absolute -top-7 bg-foreground text-background text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap z-10">
+                      {day.questions} intrebari
+                    </div>
+                  )}
+                  <div
+                    className={`w-full rounded-t transition-all duration-300 ${
+                      day.isToday ? "bg-primary" : day.questions > 0 ? "bg-primary/60" : "bg-muted/30"
+                    }`}
+                    style={{ height: `${height}%`, minHeight: "6px" }}
+                  />
+                </div>
+                <span className={`text-[10px] sm:text-xs ${day.isToday ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                  {day.short}
+                </span>
+                {day.questions > 0 && (
+                  <span className="text-[8px] text-muted-foreground/60">{day.questions}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
-        <p className="text-xs text-muted-foreground text-center mt-2">Minute de studiu estimate pe zi</p>
+        <p className="text-xs text-muted-foreground text-center mt-2">
+          {maxQuestions > 1
+            ? `Bazat pe intrebarile reale rezolvate in ultimele 7 zile`
+            : `Completeaza primul tau test pentru a vedea activitatea`}
+        </p>
       </div>
 
-      {/* Goals Section - dinamice */}
+      {/* Goals */}
       <div className="bg-card rounded-xl p-4 border border-border">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-3">
           <Target className="w-4 h-4 text-primary" />
           <h3 className="font-bold text-foreground text-sm" style={{ fontFamily: "var(--font-syne)" }}>Obiective</h3>
         </div>
@@ -268,9 +349,9 @@ export default function ProgressTab({
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
                     <goal.icon className={`w-4 h-4 ${goal.color}`} />
-                    <span className="text-sm text-foreground">{goal.label}</span>
+                    <span className="text-xs text-foreground">{goal.label}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">{goal.current}/{goal.target} ({percent}%)</span>
+                  <span className="text-xs text-muted-foreground">{goal.current}/{goal.target}</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
@@ -281,12 +362,13 @@ export default function ProgressTab({
         </div>
       </div>
 
-      {/* Subject Progress List */}
+      {/* Subject Progress List with expand */}
       <div>
-        <h2 className="font-bold text-lg mb-3 text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
-          Acuratete pe Materii
-        </h2>
-        <div className="space-y-3">
+        <div className="flex items-center gap-2 mb-3">
+          <BookOpen className="w-4 h-4 text-primary" />
+          <h3 className="font-bold text-foreground text-sm" style={{ fontFamily: "var(--font-syne)" }}>Acuratete pe materii</h3>
+        </div>
+        <div className="space-y-2">
           {subjects.map((subject) => {
             const accuracy = getSubjectAccuracy(subject.name);
             const score = subjectScores[subject.name] || { correct: 0, total: 0 };
@@ -296,15 +378,15 @@ export default function ProgressTab({
             return (
               <div key={subject.name} className="bg-card rounded-xl border border-border overflow-hidden">
                 <button onClick={() => setExpandedSubject(isExpanded ? null : subject.name)} className="w-full p-3 text-left">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg" style={{ color: subject.color }}>{subject.icon}</span>
-                      <span className="text-sm font-medium text-foreground">{subject.name}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-lg shrink-0" style={{ color: subject.color }}>{subject.icon}</span>
+                      <span className="text-sm font-medium text-foreground truncate">{subject.name}</span>
                       {!hasData && (
-                        <span className="text-[9px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">inactiv</span>
+                        <span className="text-[9px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full shrink-0">inactiv</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       {hasData && accuracy !== null && (
                         <span className="text-xs text-muted-foreground">{score.correct}/{score.total}</span>
                       )}
@@ -314,7 +396,7 @@ export default function ProgressTab({
                       <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                     </div>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
                     <div className="h-full rounded-full transition-all" style={{
                       width: hasData ? `${accuracy}%` : "0%",
                       backgroundColor: hasData ? subject.color : undefined
@@ -326,39 +408,40 @@ export default function ProgressTab({
                   <div className="px-3 pb-3 space-y-3 border-t border-border pt-3">
                     {hasData ? (
                       <>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                          <div className="bg-muted/50 rounded-lg p-2">
-                            <p className="text-xs text-muted-foreground">Intrebari rezolvate</p>
-                            <p className="text-lg font-bold text-foreground">{score.total}</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-muted/50 rounded-lg p-2 text-center">
+                            <p className="text-xs text-muted-foreground">Intrebari</p>
+                            <p className="text-base font-bold text-foreground">{score.total}</p>
                           </div>
-                          <div className="bg-muted/50 rounded-lg p-2">
-                            <p className="text-xs text-muted-foreground">Raspunsuri corecte</p>
-                            <p className="text-lg font-bold text-green-500">{score.correct}</p>
+                          <div className="bg-muted/50 rounded-lg p-2 text-center">
+                            <p className="text-xs text-muted-foreground">Corecte</p>
+                            <p className="text-base font-bold text-green-500">{score.correct}</p>
                           </div>
-                          <div className="bg-muted/50 rounded-lg p-2">
-                            <p className="text-xs text-muted-foreground">Raspunsuri gresite</p>
-                            <p className="text-lg font-bold text-red-400">{score.total - score.correct}</p>
+                          <div className="bg-muted/50 rounded-lg p-2 text-center">
+                            <p className="text-xs text-muted-foreground">Gresite</p>
+                            <p className="text-base font-bold text-red-400">{score.total - score.correct}</p>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Acuratete:</span>
-                          <span className={accuracy !== null ? (accuracy >= 70 ? "text-green-500 font-medium" : accuracy >= 50 ? "text-yellow-500 font-medium" : "text-red-400 font-medium") : "text-muted-foreground"}>
-                            {accuracy !== null ? `${accuracy}%` : "N/A"}
-                          </span>
+                        <div
+                          className="w-full py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          style={{ backgroundColor: `${subject.color}20`, color: subject.color }}
+                          onClick={(e) => { e.stopPropagation(); onPracticeSubject(subject.name); }}
+                        >
+                          <Play className="w-3.5 h-3.5" /> Practica acum
                         </div>
                       </>
                     ) : (
-                      <div className="text-center py-4">
-                        <p className="text-sm text-muted-foreground">Nicio activitate la aceasta materie</p>
+                      <div className="text-center py-3">
+                        <p className="text-xs text-muted-foreground mb-2">Nicio activitate la aceasta materie</p>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onPracticeSubject(subject.name); }}
+                          className="py-2 px-4 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors mx-auto"
+                          style={{ backgroundColor: `${subject.color}20`, color: subject.color }}
+                        >
+                          <Play className="w-3.5 h-3.5" /> Incepe acum
+                        </button>
                       </div>
                     )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onPracticeSubject(subject.name); }}
-                      className="w-full py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors"
-                      style={{ backgroundColor: `${subject.color}20`, color: subject.color }}
-                    >
-                      <Play className="w-4 h-4" /> Practica acum
-                    </button>
                   </div>
                 )}
               </div>
@@ -367,8 +450,22 @@ export default function ProgressTab({
         </div>
       </div>
 
-      {/* Reset Progress Button */}
-      <button onClick={onResetProgress} className="w-full py-3 rounded-xl font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2">
+      {/* Total study time card */}
+      <div className="bg-card rounded-xl p-4 border border-border">
+        <div className="flex items-center gap-2 mb-2">
+          <Clock className="w-4 h-4 text-primary" />
+          <h3 className="font-bold text-foreground text-sm" style={{ fontFamily: "var(--font-syne)" }}>Timp total de studiu</h3>
+        </div>
+        <p className="text-2xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
+          {formatTime(totalStudyTime)}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Bazat pe intrebarile rezolvate si timpul activ in aplicatie
+        </p>
+      </div>
+
+      {/* Reset Progress */}
+      <button onClick={onResetProgress} className="w-full py-3 rounded-xl font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2 text-sm">
         <RotateCcw className="w-4 h-4" /> Reseteaza progresul
       </button>
     </div>

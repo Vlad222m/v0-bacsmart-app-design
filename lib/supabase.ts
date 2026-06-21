@@ -423,6 +423,65 @@ export const incrementDailyUsage = async (userId: string, field: "chat_count" | 
   }
 }
 
+// Study minutes tracking helpers
+export const getStudyMinutes = async (userId: string): Promise<number> => {
+  if (!supabase) return 0
+  const today = new Date().toISOString().split("T")[0]
+  const { data, error } = await supabase
+    .from("daily_usage")
+    .select("study_minutes")
+    .eq("user_id", userId)
+    .eq("date", today)
+    .maybeSingle()
+  if (error) console.error("Error getting study minutes:", error)
+  return (data as { study_minutes: number } | null)?.study_minutes || 0
+}
+
+export const addStudyMinutes = async (userId: string, minutes: number) => {
+  if (!supabase) return
+  const today = new Date().toISOString().split("T")[0]
+  const { data: existing } = await supabase
+    .from("daily_usage")
+    .select("id, study_minutes")
+    .eq("user_id", userId)
+    .eq("date", today)
+    .maybeSingle()
+  if (existing) {
+    await supabase
+      .from("daily_usage")
+      .update({ study_minutes: (existing.study_minutes || 0) + minutes })
+      .eq("id", existing.id)
+  } else {
+    await supabase
+      .from("daily_usage")
+      .insert({ user_id: userId, date: today, study_minutes: minutes })
+  }
+}
+
+// Get test scores grouped by date for the weekly chart (last 7 days)
+export const getTestDates = async (userId: string, daysBack = 7): Promise<Record<string, number>> => {
+  if (!supabase) return {}
+  const since = new Date()
+  since.setDate(since.getDate() - daysBack)
+  since.setHours(0, 0, 0, 0)
+  const { data, error } = await supabase
+    .from("test_scores")
+    .select("correct, total, created_at")
+    .eq("user_id", userId)
+    .gte("created_at", since.toISOString())
+  if (error) {
+    console.error("Error getting test dates:", error)
+    return {}
+  }
+  // Group by date (YYYY-MM-DD) and sum total
+  const byDate: Record<string, number> = {}
+  ;(data as TestScore[]).forEach((score) => {
+    const dateKey = score.created_at.split("T")[0]
+    byDate[dateKey] = (byDate[dateKey] || 0) + score.total
+  })
+  return byDate
+}
+
 export const updateProfilePlan = async (userId: string, plan: "free" | "premium" | "annual", trialEndsAt?: string | null, premiumUntil?: string | null) => {
   if (!supabase) return null
   const updates: Record<string, any> = { current_plan: plan }

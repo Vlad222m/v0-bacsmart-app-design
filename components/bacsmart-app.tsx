@@ -14,7 +14,8 @@ import {
   getSubjectProgress, saveSummary as saveSummaryToDb,
   getSummaries, deleteSummary as deleteSummaryFromDb,
   saveQuiz, getQuizzes, deleteQuiz, saveBacPreferences,
-  resetUserProgress, apiFetch, getDailyUsage, type UserProfile, type SavedQuiz,
+  resetUserProgress, apiFetch, getDailyUsage, getTestDates,
+  addStudyMinutes, type UserProfile, type SavedQuiz,
 } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { useBackButton } from "@/lib/use-back-button";
@@ -112,6 +113,19 @@ export default function BACsmartApp() {
     } catch {}
     return 0;
   });
+
+  const [studyMinutesToday, setStudyMinutesToday] = useState(() => {
+    try {
+      const saved = localStorage.getItem("bacsmart_study_minutes_today");
+      const savedDate = localStorage.getItem("bacsmart_study_minutes_date");
+      const today = new Date().toISOString().split("T")[0];
+      if (saved && savedDate === today) return parseInt(saved);
+    } catch {}
+    return 0;
+  });
+  const [weeklyTestData, setWeeklyTestData] = useState<Record<string, number>>({});
+  const activeTimeRef = useRef(0);
+  const activeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const updateStreak = () => {
     const today = new Date().toISOString().split("T")[0];
@@ -429,6 +443,72 @@ export default function BACsmartApp() {
     window.location.replace("/");
   };
 
+  // Track active time in the app
+  const startActiveTimer = useCallback(() => {
+    if (activeTimerRef.current) clearInterval(activeTimerRef.current)
+    activeTimerRef.current = setInterval(() => {
+      activeTimeRef.current += 1 // 1 second
+      if (activeTimeRef.current % 60 === 0) { // Every 60 seconds
+        const mins = Math.floor(activeTimeRef.current / 60)
+        setStudyMinutesToday(mins)
+        try {
+          localStorage.setItem("bacsmart_study_minutes_today", String(mins))
+          localStorage.setItem("bacsmart_study_minutes_date", new Date().toISOString().split("T")[0])
+        } catch {}
+        if (authUser && mins > 0 && mins % 5 === 0) { // Save to DB every 5 min
+          addStudyMinutes(authUser.id, 5).catch(console.error)
+        }
+      }
+    }, 1000)
+  }, [authUser])
+
+  const stopActiveTimer = useCallback(() => {
+    if (activeTimerRef.current) {
+      clearInterval(activeTimerRef.current)
+      activeTimerRef.current = null
+    }
+  }, [])
+
+  // Restore study minutes from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("bacsmart_study_minutes_today")
+      if (saved) setStudyMinutesToday(parseInt(saved))
+    } catch {}
+    startActiveTimer()
+    return () => stopActiveTimer()
+  }, [startActiveTimer, stopActiveTimer])
+
+  // Load weekly test data for progress tab
+  const loadWeeklyTestData = useCallback(async () => {
+    if (authUser) {
+      try {
+        const data = await getTestDates(authUser.id, 7)
+        setWeeklyTestData(data)
+      } catch {}
+    }
+    // Also from localStorage
+    try {
+      const local = localStorage.getItem("bacsmart_weekly_test_data")
+      if (local) {
+        const parsed = JSON.parse(local)
+        setWeeklyTestData(prev => ({ ...parsed, ...prev }))
+      }
+    } catch {}
+  }, [authUser])
+
+  useEffect(() => { loadWeeklyTestData() }, [loadWeeklyTestData])
+
+  // Track test answers per date (local, for weekly chart)
+  const recordTestAnswerForDate = (subject: string) => {
+    const today = new Date().toISOString().split("T")[0]
+    setWeeklyTestData(prev => {
+      const updated = { ...prev, [today]: (prev[today] || 0) + 1 }
+      try { localStorage.setItem("bacsmart_weekly_test_data", JSON.stringify(updated)) } catch {}
+      return updated
+    })
+  }
+
   const prevSubjectRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -543,6 +623,7 @@ export default function BACsmartApp() {
     setSubjectScores(updatedScores);
     incrementLocalUsage("answers");
     updateStreak();
+    recordTestAnswerForDate(question.subject); // track for weekly chart
     // Persist to localStorage
     try { localStorage.setItem("bacsmart_scores", JSON.stringify(updatedScores)); } catch {}
     if (authUser) { try { await saveTestScore(authUser.id, question.subject, isCorrect ? 1 : 0, 1); } catch (e) { console.error("DB saveTestScore error:", e); } }
@@ -968,6 +1049,7 @@ export default function BACsmartApp() {
               subjects={subjectsState} subjectScores={subjectScores}
               onPracticeSubject={navigateToTests} showToastMessage={showToastMessage}
               onResetProgress={() => setShowResetModal(true)}
+              weeklyTestData={weeklyTestData} studyMinutesToday={studyMinutesToday}
             />
           )}
           {activeTab === "premium" && <PremiumTab onPlanClick={handlePremiumClick} currentPlan={currentPlan} />}
