@@ -64,18 +64,6 @@ export default function ChatTab({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleQuickQuestion = (q: string) => {
-    setNewMessage(q);
-    setTimeout(() => {
-      setNewMessage("");
-      const input = document.querySelector<HTMLInputElement>("#chat-input");
-      if (input) {
-        const inputEvent = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
-        input.dispatchEvent(inputEvent);
-      }
-    }, 100);
-  };
-
   const suggestedQuestions = QUICK_QUESTIONS[selectedSubject.name] || QUICK_QUESTIONS["Matematică"];
 
   return (
@@ -131,40 +119,10 @@ export default function ChatTab({
         ))}
       </div>
 
-      {/* Messages zone - flex-1, inputul e mereu jos */}
+      {/* Mesaje si quick questions - ocupa tot spatiul liber, imping inputul jos */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Quick Questions - doar cand nu sunt mesaje */}
-        {!hasMessages && showQuickQuestions && (
-          <div className="mb-4 shrink-0">
-            <button
-              onClick={() => setShowQuickQuestions(false)}
-              className="flex items-center gap-1 text-xs text-muted-foreground mb-2 hover:text-foreground transition-colors"
-            >
-              <Sparkles className="w-3 h-3" /> Intrebari rapide
-              <ChevronDown className="w-3 h-3" />
-            </button>
-            <div className="flex flex-wrap gap-1.5">
-              {suggestedQuestions.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => {
-                    setNewMessage(q);
-                    setShowQuickQuestions(false);
-                  }}
-                  className="text-xs bg-card border border-border px-3 py-1.5 rounded-full text-muted-foreground hover:border-primary hover:text-foreground transition-colors"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Spacer gol care impinge inputul jos cand nu sunt mesaje */}
-        {!hasMessages && !showQuickQuestions && <div className="flex-1" />}
-
-        {/* Messages */}
-        {hasMessages && (
+        {hasMessages ? (
+          /* Scroll de mesaje */
           <div className="flex-1 overflow-y-auto space-y-3 min-h-0">
             {messages.map((msg) => (
               <div key={msg.id} className="group">
@@ -232,10 +190,41 @@ export default function ChatTab({
             )}
             <div ref={messagesEndRef} />
           </div>
+        ) : (
+          /* Fara mesaje - quick questions centrate sus, restul spatiu gol impinge inputul jos */
+          <>
+            {showQuickQuestions && (
+              <div className="shrink-0 mb-4">
+                <button
+                  onClick={() => setShowQuickQuestions(false)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground mb-2 hover:text-foreground transition-colors"
+                >
+                  <Sparkles className="w-3 h-3" /> Intrebari rapide
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+                <div className="flex flex-wrap gap-1.5">
+                  {suggestedQuestions.map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => {
+                        setNewMessage(q);
+                        setShowQuickQuestions(false);
+                      }}
+                      className="text-xs bg-card border border-border px-3 py-1.5 rounded-full text-muted-foreground hover:border-primary hover:text-foreground transition-colors"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Spacer gol - impinge inputul jos */}
+            <div className="flex-1" />
+          </>
         )}
       </div>
 
-      {/* Input Bar - mereu in partea de jos */}
+      {/* Input Bar - mereu ancorat jos */}
       <div className="shrink-0 pt-2 mt-auto">
         <div className="flex gap-2">
           {chatLimitReached ? (
