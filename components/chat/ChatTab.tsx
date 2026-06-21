@@ -67,7 +67,7 @@ export default function ChatTab({
   const suggestedQuestions = QUICK_QUESTIONS[selectedSubject.name] || QUICK_QUESTIONS["Matematică"];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Chat Header */}
       <div className="flex items-center gap-3 mb-4 shrink-0">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: `${selectedSubject.color}20` }}>

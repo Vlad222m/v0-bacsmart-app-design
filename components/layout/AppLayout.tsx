@@ -24,8 +24,8 @@ export function AppLayout({ activeTab, onTabChange, children, hideNav = false }:
   return (
     <div className="h-full w-full flex flex-col bg-background text-foreground">
       {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto mobile-scrollbar px-3 sm:px-4 md:px-6 lg:px-8 safe-top">
-        <div className="max-w-lg mx-auto lg:max-w-xl">{children}</div>
+      <div className="flex-1 overflow-y-auto mobile-scrollbar px-3 sm:px-4 md:px-6 lg:px-8 safe-top flex flex-col">
+        <div className="max-w-lg mx-auto lg:max-w-xl flex flex-col flex-1 min-h-0">{children}</div>
       </div>
 
       {/* Bottom Tab Navigation — persistent on main screens, hidden on secondary */}
