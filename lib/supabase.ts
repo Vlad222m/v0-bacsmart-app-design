@@ -126,13 +126,8 @@ function isNativePlatform(): boolean {
 
 // Obține URL-ul corect de redirect pentru OAuth în funcție de platformă
 function getOAuthRedirectUrl(): string {
-  // Pe web: folosește origin-ul curent
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
-  }
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}/auth/callback`;
-  }
+  // Pe web și Capacitor: același URL HTTPS
+  // Forțăm URL-ul exact care e configurat în Google Cloud Console și Supabase
   return 'https://v0-bacsmart-app-design.vercel.app/auth/callback';
 }
 
@@ -148,30 +143,17 @@ export const signInWithGoogle = async () => {
     provider: 'google',
     options: {
       redirectTo,
+      // skipBrowserRedirect: true înseamnă că nu face auto-redirect
+      // și noi controlăm deschiderea URL-ului manual
+      skipBrowserRedirect: false,
     },
   });
   if (error) throw error;
 
   // data.url = URL-ul Google OAuth (consent screen)
-  if (data?.url && typeof window !== 'undefined') {
-    if (isNative) {
-      // Pe Capacitor: deschide URL-ul într-un Custom Tab (browser in-app)
-      // @capacitor/browser deschide un Chrome Custom Tab pe Android,
-      // care se închide automat după ce URL-ul de redirect e interceptat
-      try {
-        const { Browser } = await import('@capacitor/browser');
-        await Browser.open({ url: data.url });
-        // Notă: @capacitor/browser ascultă evenimentul 'browserFinished'
-        // și acolo putem verifica dacă OAuth s-a completat
-      } catch (e) {
-        console.warn('[OAuth] @capacitor/browser not available, fallback to window.open', e);
-        window.open(data.url, '_blank');
-      }
-    } else {
-      // Web: redirect normal (pagina se reîncarcă)
-      window.location.href = data.url;
-    }
-  }
+  // Supabase face deja redirect pe web — nu facem nimic suplimentar
+  // Pe nativ, Custom Tab-ul se deschide și se închide automat
+};
 
   return data;
 };
