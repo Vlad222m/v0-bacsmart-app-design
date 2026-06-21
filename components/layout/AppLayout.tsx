@@ -23,9 +23,9 @@ interface AppLayoutProps {
 export function AppLayout({ activeTab, onTabChange, children, hideNav = false }: AppLayoutProps) {
   return (
     <div className="h-full w-full flex flex-col bg-background text-foreground">
-      {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto mobile-scrollbar px-3 sm:px-4 md:px-6 lg:px-8 safe-top flex flex-col">
-        <div className="max-w-lg mx-auto lg:max-w-xl flex flex-col flex-1 min-h-0">{children}</div>
+      {/* Scrollable content area - consistent width on all screens */}
+      <div className="flex-1 overflow-y-auto mobile-scrollbar px-4 sm:px-6 safe-top flex flex-col overflow-x-hidden">
+        <div className="w-full max-w-xl mx-auto flex flex-col flex-1 min-h-0">{children}</div>
       </div>
 
       {/* Bottom Tab Navigation — persistent on main screens, hidden on secondary */}
@@ -34,7 +34,7 @@ export function AppLayout({ activeTab, onTabChange, children, hideNav = false }:
           className="sticky bottom-0 left-0 right-0 bg-card border-t border-border px-1 py-2 sm:py-3 safe-bottom"
           style={{ zIndex: 50 }}
         >
-          <div className="max-w-lg mx-auto lg:max-w-xl">
+          <div className="w-full max-w-xl mx-auto">
             <div className="flex justify-around items-center">
               {tabs.map((tab) => {
                 const Icon = tab.icon

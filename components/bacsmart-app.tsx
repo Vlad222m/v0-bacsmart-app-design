@@ -791,7 +791,7 @@ export default function BACsmartApp() {
   const hideBottomNav = isSecondaryScreen;
 
   return (
-    <div className="h-full w-full bg-background">
+    <div className="h-full w-full bg-background overflow-x-hidden">
       {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-card border border-border rounded-xl px-4 py-3 shadow-xl z-[100] animate-fade-in">

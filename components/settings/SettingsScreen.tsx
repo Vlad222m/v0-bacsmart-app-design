@@ -100,7 +100,7 @@ export default function SettingsScreen({
   };
 
   return (
-    <div className="h-full flex flex-col overflow-y-auto">
+    <div className="h-full flex flex-col overflow-y-auto overflow-x-hidden">
       {/* Header */}
       <button onClick={onBack} className="flex items-center gap-2 text-foreground mb-6 hover:text-primary transition-colors w-fit">
         <ArrowLeft className="w-5 h-5" />
