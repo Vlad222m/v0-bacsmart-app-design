@@ -4,8 +4,15 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // Create Supabase client - will be null if env vars are missing
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createBrowserClient(supabaseUrl, supabaseAnonKey)
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createBrowserClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        // Forțăm flowType = pkce (default în v2) și URL-ul de redirect corect
+        flowType: 'pkce',
+        autoRefreshToken: true,
+        persistSession: true,
+      },
+    })
   : null
 
 // Database types
@@ -124,31 +131,17 @@ function isNativePlatform(): boolean {
   }
 }
 
-// Obține URL-ul corect de redirect pentru OAuth în funcție de platformă
-function getOAuthRedirectUrl(): string {
-  // Pe web și Capacitor: același URL HTTPS
-  // Forțăm URL-ul exact care e configurat în Google Cloud Console și Supabase
-  return 'https://v0-bacsmart-app-design.vercel.app/auth/callback';
-}
-
 export const signInWithGoogle = async () => {
   if (!supabase) throw new Error("Supabase not configured")
-
-  const redirectTo = getOAuthRedirectUrl();
-  const isNative = isNativePlatform();
-
-  console.log(`[OAuth] signInWithGoogle: isNative=${isNative}, redirectTo=${redirectTo}`);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo,
-      // skipBrowserRedirect: true înseamnă că nu face auto-redirect
-      // și noi controlăm deschiderea URL-ului manual
-      skipBrowserRedirect: false,
+      redirectTo: 'https://v0-bacsmart-app-design.vercel.app/auth/callback',
     },
   });
   if (error) throw error;
+  // Supabase face redirect automat - nu mai facem nimic manual
 };
 
 export const signOut = async () => {

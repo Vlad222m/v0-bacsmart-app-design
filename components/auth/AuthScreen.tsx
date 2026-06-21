@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Loader, Eye, EyeOff, AlertTriangle, RefreshCw } from "lucide-react";
 import { signUpWithEmail, signInWithEmail, signInWithGoogle } from "@/lib/supabase";
 import BacProfileQuiz from "./BacProfileQuiz";
+import GoogleOAuthModal from "./GoogleOAuthModal";
 
 interface AuthScreenProps {
   onAuthSuccess: () => void;
@@ -20,6 +21,7 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showBacQuiz, setShowBacQuiz] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [oauthTimeout, setOauthTimeout] = useState(false);
   const oauthTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -86,12 +88,7 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
     try {
       await signInWithGoogle();
       // Pe web, signInWithGoogle face redirect — nu ajungem aici.
-      // Pe nativ (Capacitor), se deschide un Custom Tab și așteptăm callback-ul.
-      // Dacă ajungem aici fără redirect (de ex. eroare), anulăm timer-ul.
       clearOAuthTimer();
-      // Pe nativ, nu facem setIsLoading(false) imediat:
-      // așteptăm ca userul să se autentifice și să revină prin deep link.
-      // Dacă nu revine în 60s, timer-ul de mai sus va activa fallback-ul.
     } catch (err: any) {
       clearOAuthTimer();
       console.error("Google auth error:", err);
@@ -212,7 +209,7 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
 
           {/* Google Auth */}
           <button
-            onClick={handleGoogleAuth}
+            onClick={() => setShowGoogleModal(true)}
             disabled={isLoading}
             className="w-full bg-white text-gray-800 py-3 rounded-xl font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-3"
           >
@@ -269,6 +266,19 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
           </p>
         </div>
       </div>
+
+      {/* Google OAuth Modal — arată branding BACsmart înainte de Chrome Custom Tab */}
+      {showGoogleModal && (
+        <GoogleOAuthModal
+          onStartOAuth={handleGoogleAuth}
+          onClose={() => {
+            setShowGoogleModal(false);
+            setIsLoading(false);
+            clearOAuthTimer();
+            setOauthTimeout(false);
+          }}
+        />
+      )}
 
       {/* BAC Profile Quiz after signup */}
       {showBacQuiz && <BacProfileQuiz onComplete={handleBacComplete} />}
