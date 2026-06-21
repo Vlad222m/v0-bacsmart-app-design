@@ -172,7 +172,7 @@ export default function HomeTab({
             {subjectsState[0]?.name || "Matematica"}
           </h3>
           <p className="text-sm text-muted-foreground mb-3">
-            {subjectsState[0]?.progress || 0}% completat
+            {subjectsState[0]?.progress || 0}% progres
           </p>
           <div className="flex items-center justify-between">
             <div className="flex-1 mr-4">
