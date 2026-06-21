@@ -14,7 +14,7 @@ interface FullScreenOverlayProps {
 export function FullScreenOverlay({ children, zIndex = 150 }: FullScreenOverlayProps) {
   return (
     <div
-      className="fixed inset-0 bg-background z-[150] animate-in slide-in-from-right duration-300 overflow-y-auto overflow-x-hidden"
+      className="fixed inset-0 bg-background z-[150] overflow-y-auto overflow-x-hidden"
       style={{ zIndex }}
     >
       <div className="h-full flex flex-col px-4 sm:px-6 py-4 w-full max-w-xl mx-auto safe-bottom">
