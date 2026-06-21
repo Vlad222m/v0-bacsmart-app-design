@@ -729,8 +729,18 @@ export default function BACsmartApp() {
 
   const navigateToTests = (subjectOrName: Subject | string) => {
     const subjectName = typeof subjectOrName === "string" ? subjectOrName : subjectOrName.name;
+    setUsedQuestionIndices([]);
+    setSelectedAnswer(null);
+    setShowResult(false);
     setTestSubjectFilter(subjectName);
     setActiveTab("tests");
+    // Incarca direct o intrebare din materia selectata
+    const filtered = allTestQuestions.filter((q) => q.subject === subjectName);
+    if (filtered.length > 0) {
+      setCurrentQuestionIndex(allTestQuestions.indexOf(filtered[Math.floor(Math.random() * filtered.length)]));
+    } else {
+      setCurrentQuestionIndex(null);
+    }
   };
 
   const handleClearChat = async () => {

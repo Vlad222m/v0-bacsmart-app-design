@@ -6,6 +6,9 @@ __v0_jsx-dev-runtime.ts
 .v0-trash/
 .vercel/
 
+# Claude Code memory files
+.claude/
+
 # Environment variables
 .env*.local
 
