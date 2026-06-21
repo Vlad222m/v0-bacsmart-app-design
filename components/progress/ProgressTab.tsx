@@ -78,7 +78,7 @@ export default function ProgressTab({
   return (
     <div className="space-y-5 pt-2">
       <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
-        Progresul Tau
+        Rata de Succes
       </h1>
 
       {/* Circular Progress */}
@@ -99,13 +99,13 @@ export default function ProgressTab({
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-3xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>{animatedProgress}%</span>
-            <span className="text-xs text-muted-foreground">Acuratete</span>
+            <span className="text-xs text-muted-foreground">succes</span>
           </div>
         </div>
       </div>
 
       {/* Stats Grid - Acum cu date reale */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
         <div className="bg-card rounded-xl p-3 border border-border text-center">
           <p className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>{totalQuestions}</p>
           <p className="text-xs text-muted-foreground">Intrebari</p>
@@ -115,8 +115,12 @@ export default function ProgressTab({
           <p className="text-xs text-muted-foreground">Teste</p>
         </div>
         <div className="bg-card rounded-xl p-3 border border-border text-center">
-          <p className="text-xl font-bold text-primary" style={{ fontFamily: "var(--font-syne)" }}>{totalCorrect}</p>
+          <p className="text-xl font-bold text-green-500" style={{ fontFamily: "var(--font-syne)" }}>{totalCorrect}</p>
           <p className="text-xs text-muted-foreground">Corecte</p>
+        </div>
+        <div className="bg-card rounded-xl p-3 border border-border text-center">
+          <p className="text-xl font-bold text-red-400" style={{ fontFamily: "var(--font-syne)" }}>{totalQuestions - totalCorrect}</p>
+          <p className="text-xs text-muted-foreground">Gresite</p>
         </div>
       </div>
 
@@ -167,7 +171,7 @@ export default function ProgressTab({
       {/* Subject Progress List */}
       <div>
         <h2 className="font-bold text-lg mb-3 text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
-          Progres pe Materii
+          Acuratete pe Materii
         </h2>
         <div className="space-y-3">
           {subjects.map((subject) => {
