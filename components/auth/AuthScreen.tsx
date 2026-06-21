@@ -91,7 +91,7 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
             />
           </div>
           <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
-            BACsmart
+            BacSmart
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Pregatirea ta pentru BAC</p>
         </div>
