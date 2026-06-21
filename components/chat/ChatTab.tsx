@@ -69,7 +69,7 @@ export default function ChatTab({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Chat Header */}
-      <div className="flex items-center gap-3 mb-4 shrink-0">
+      <div className="flex items-center gap-3 mb-3 shrink-0">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: `${selectedSubject.color}20` }}>
           {selectedSubject.icon}
         </div>
@@ -101,8 +101,11 @@ export default function ChatTab({
         )}
       </div>
 
+      {/* Separator subtil intre header si zona de chat */}
+      <div className="h-px bg-border/50 mb-3 shrink-0" />
+
       {/* Subject Chips */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 -mx-1 px-1 shrink-0">
+      <div className="flex gap-2 mb-3 overflow-x-auto pb-2 -mx-1 px-1 shrink-0">
         {subjects.map((subject) => (
           <button
             key={subject.name}
@@ -224,8 +227,8 @@ export default function ChatTab({
         )}
       </div>
 
-      {/* Input Bar - mereu ancorat jos */}
-      <div className="shrink-0 pt-2 mt-auto">
+      {/* Input Bar - mereu ancorat jos, cu spatiu fata de meniuri */}
+      <div className="shrink-0 pt-2 pb-4 mt-auto">
         <div className="flex gap-2">
           {chatLimitReached ? (
             <button
