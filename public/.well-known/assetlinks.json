@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "ro.bacsmart.app",
+    "sha256_cert_fingerprints": [
+      "51:1D:D0:1A:E5:E6:2F:67:99:9F:09:0C:FB:49:82:AB:32:01:1A:80:F0:22:8E:B7:F1:B3:E6:24:C8:EF:FD:41"
+    ]
+  }
+}]

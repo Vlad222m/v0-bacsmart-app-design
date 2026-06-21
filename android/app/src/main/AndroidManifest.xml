@@ -22,6 +22,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Android App Link pentru OAuth callback (HTTPS) -->
+            <!-- autoVerify: Android verifică assetlinks.json pe server -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="v0-bacsmart-app-design.vercel.app"
+                    android:pathPrefix="/auth" />
+            </intent-filter>
+
         </activity>
 
         <provider

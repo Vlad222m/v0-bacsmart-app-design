@@ -69,22 +69,21 @@ export default function HelpScreen({ onBack, showToastMessage }: HelpScreenProps
   };
 
   return (
-    <div className="fixed inset-0 bg-[#08080D] z-[150] animate-in slide-in-from-right duration-300">
-      <div className="h-full flex flex-col p-4 max-w-md sm:max-w-lg mx-auto">
-        {/* Header */}
-        <button onClick={onBack} className="flex items-center gap-2 text-foreground mb-6 hover:text-primary transition-colors">
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Inapoi</span>
-        </button>
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <button onClick={onBack} className="flex items-center gap-2 text-foreground mb-6 hover:text-primary transition-colors w-fit">
+        <ArrowLeft className="w-5 h-5" />
+        <span className="font-medium">Inapoi</span>
+      </button>
 
-        <h1 className="text-2xl font-bold text-foreground mb-4" style={{ fontFamily: "var(--font-syne)" }}>
-          Ajutor
-        </h1>
+      <h1 className="text-2xl font-bold text-foreground mb-4" style={{ fontFamily: "var(--font-syne)" }}>
+        Ajutor
+      </h1>
 
-        {/* Search Bar */}
-        <div className="mb-4 flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <input
+      {/* Search Bar */}
+      <div className="mb-4 flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2">
+        <Search className="w-4 h-4 text-muted-foreground" />
+        <input
             type="text"
             placeholder="Cauta intrebari..."
             value={searchQuery}
@@ -142,7 +141,6 @@ export default function HelpScreen({ onBack, showToastMessage }: HelpScreenProps
             Trimite un mesaj
           </button>
         </div>
-      </div>
 
       {/* Contact Form Modal */}
       {showContactForm && (

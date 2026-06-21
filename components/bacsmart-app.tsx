@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Home, MessageCircle, FileText, TrendingUp, Crown,
   Send, ChevronRight, Check, X, User, Settings, LogOut,
   Upload, Save, ArrowLeft, Trash2, RefreshCw, AlertTriangle,
   HelpCircle, Camera,
@@ -18,8 +17,10 @@ import {
   resetUserProgress, apiFetch, getDailyUsage, type UserProfile, type SavedQuiz,
 } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
+import { useBackButton } from "@/lib/use-back-button";
 
 import type { Tab, Message, Subject, GeneratedSummaryData, SubjectScores, NotificationItem } from "@/components/types";
+import { AppLayout, FullScreenOverlay, PageHeader } from "@/components/layout";
 import HomeTab from "@/components/home/HomeTab";
 import ChatTab from "@/components/chat/ChatTab";
 import TestsTab from "@/components/tests/TestsTab";
@@ -56,6 +57,20 @@ const allTestQuestions = getAllQuestions().map((q) => ({
 
 export default function BACsmartApp() {
   const { user: authUser, loading: authLoading } = useAuth();
+  const { pushScreen, popScreen, clearStack } = useBackButton(
+    (screenId: string) => {
+      // Called by hardware back button — close the correct screen
+      switch (screenId) {
+        case "profile": setShowProfileScreen(false); break
+        case "settings": setShowSettingsScreen(false); break
+        case "help": setShowHelpScreen(false); break
+        case "notifications": setShowNotificationsScreen(false); break
+        case "saved-quizzes": setShowSavedQuizList(false); break
+        case "document-quiz": setShowDocumentQuizUpload(false); setDocumentQuizFile(null); setIsGeneratingQuiz(false); break
+        case "premium-modal": setShowPremiumModal(false); break
+      }
+    },
+  )
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showAuthScreen, setShowAuthScreen] = useState(true);
@@ -126,7 +141,16 @@ export default function BACsmartApp() {
     });
   };
 
-  const goToPremium = () => setActiveTab("premium");
+  const goToPremium = () => {
+    pushScreen("premium", "Premium");
+    setActiveTab("premium");
+  };
+
+  // Navigation stack helpers for back button on Android/iOS
+  const openScreen = useCallback((screenId: string, screenLabel: string, openFn: () => void) => {
+    pushScreen(screenId, screenLabel);
+    openFn();
+  }, [pushScreen]);
 
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [selectedSubject, setSelectedSubject] = useState(subjects[0]);
@@ -277,7 +301,7 @@ export default function BACsmartApp() {
             bacSubjects = JSON.parse(localSubjects);
             // Save to DB
             try {
-              await saveBacPreferences(userId, localProfile, bacSubjects);
+              await saveBacPreferences(userId, localProfile, bacSubjects!);
             } catch (e) { console.error("Error saving bac preferences to DB:", e); }
           }
         }
@@ -555,10 +579,11 @@ export default function BACsmartApp() {
 
   const handlePremiumClick = (type: "free" | "monthly" | "annual") => {
     if (type === "free") showToastMessage("Esti pe planul gratuit");
-    else { setPremiumModalType(type === "monthly" ? "monthly" : "annual"); setShowPremiumModal(true); }
+    else { setPremiumModalType(type === "monthly" ? "monthly" : "annual"); openScreen("premium-modal", "Premium", () => setShowPremiumModal(true)); }
   };
 
   const confirmPremium = () => {
+    popScreen();
     setShowPremiumModal(false);
     setCurrentPlan(premiumModalType === "monthly" ? "premium" : "annual");
     setShowSuccessScreen(true);
@@ -683,7 +708,9 @@ export default function BACsmartApp() {
     const title = documentQuizFile.name.replace(/\.[^/.]+$/, "");
     const quizData: SavedQuiz = {
       id: Date.now().toString(),
+      user_id: authUser?.id ?? '',
       title,
+      file_name: documentQuizFile.name,
       difficulty: docQuizDifficulty,
       questions: generatedQuizQuestions,
       score: docQuizScore,
@@ -744,7 +771,7 @@ export default function BACsmartApp() {
   };
 
   const openSavedQuizList = () => {
-    setShowSavedQuizList(true);
+    openScreen("saved-quizzes", "Teste salvate", () => setShowSavedQuizList(true));
     // Incarca din DB doar daca nu avem deja in state
     if (authUser && savedQuizzes.length === 0) {
       getQuizzes(authUser.id).then((q) => setSavedQuizzes(q)).catch(() => {});
@@ -757,17 +784,14 @@ export default function BACsmartApp() {
     return { correct, total };
   };
 
-  const tabs = [
-    { id: "home" as Tab, icon: Home, label: "Acasa" },
-    { id: "chat" as Tab, icon: MessageCircle, label: "Chat" },
-    { id: "tests" as Tab, icon: FileText, label: "Teste" },
-    { id: "rezumate" as Tab, icon: Camera, label: "Rezumate" },
-    { id: "progress" as Tab, icon: TrendingUp, label: "Progres" },
-    { id: "premium" as Tab, icon: Crown, label: "Premium" },
-  ];
+  const isSecondaryScreen =
+    showProfileScreen || showSettingsScreen || showHelpScreen || showNotificationsScreen ||
+    showSavedQuizList || showDocumentQuizUpload || generatedQuizQuestions.length > 0;
+
+  const hideBottomNav = isSecondaryScreen;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#08080D]">
+    <div className="h-full w-full bg-background">
       {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-card border border-border rounded-xl px-4 py-3 shadow-xl z-[100] animate-fade-in">
@@ -796,7 +820,7 @@ export default function BACsmartApp() {
                 : "35 lei/lună, facturat anual 420 lei — economisești 168 lei"}
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setShowPremiumModal(false)} className="flex-1 py-3 rounded-xl font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors">Anuleaza</button>
+              <button onClick={() => { popScreen(); setShowPremiumModal(false); }} className="flex-1 py-3 rounded-xl font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors">Anuleaza</button>
               <button onClick={confirmPremium} className="flex-1 py-3 rounded-xl font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
                 {premiumModalType === "monthly" ? "19 lei/lună" : "35 lei/lună"}
               </button>
@@ -849,85 +873,156 @@ export default function BACsmartApp() {
         </div>
       )}
 
-      {/* Auth Screen */}
+      {/* Auth Screen — full-viewport */}
       {(showAuthScreen || !authUser) && !authLoading && (
-        <AuthScreen
-          onAuthSuccess={() => setShowAuthScreen(false)}
-          showToastMessage={showToastMessage}
-          onBacProfileComplete={(bacProfile, subjects) => {
-            setUserBacProfile(bacProfile);
-            setActiveSubjects(subjects);
-            // Save to localStorage as fallback; DB save happens in loadUserData
-            if (typeof window !== "undefined") {
-              localStorage.setItem("bac_profile", bacProfile);
-              localStorage.setItem("selected_subjects", JSON.stringify(subjects));
-            }
-          }}
-        />
+        <div className="fixed inset-0 bg-background z-[200] overflow-y-auto">
+          <AuthScreen
+            onAuthSuccess={() => setShowAuthScreen(false)}
+            showToastMessage={showToastMessage}
+            onBacProfileComplete={(bacProfile, subjects) => {
+              setUserBacProfile(bacProfile);
+              setActiveSubjects(subjects);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("bac_profile", bacProfile);
+                localStorage.setItem("selected_subjects", JSON.stringify(subjects));
+              }
+            }}
+          />
+        </div>
       )}
 
-      {/* Profile Screen */}
+      {/* Mobile Layout: AppLayout with persistent bottom nav, + overlay screens */}
+      {!showAuthScreen && authUser && (
+        <AppLayout activeTab={activeTab} onTabChange={setActiveTab} hideNav={hideBottomNav}>
+          {/* Tab content */}
+          {activeTab === "home" && (
+            <HomeTab
+              subjectsState={subjectsState} subjectScores={subjectScores}
+              userProfile={userProfile}
+              onSubjectClick={navigateToTests} onPremiumClick={() => { pushScreen("premium", "Premium"); setActiveTab("premium"); }}
+              showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu}
+              currentPlan={currentPlan}
+              onProfileClick={() => { setShowProfileMenu(false); openScreen("profile", "Profil", () => setShowProfileScreen(true)); }}
+              onSettingsClick={() => { setShowProfileMenu(false); openScreen("settings", "Setări", () => setShowSettingsScreen(true)); }}
+              onLogoutClick={() => { setShowProfileMenu(false); setShowLogoutModal(true); }}
+              onHelpClick={() => { setShowProfileMenu(false); openScreen("help", "Ajutor", () => setShowHelpScreen(true)); }}
+              onNotificationsClick={() => { setShowProfileMenu(false); openScreen("notifications", "Notificări", () => setShowNotificationsScreen(true)); }}
+              dailyUsage={dailyUsage} streakDays={streakDays}
+            />
+          )}
+          {activeTab === "chat" && (
+            <ChatTab
+              subjects={subjectsState} selectedSubject={selectedSubject}
+              setSelectedSubject={setSelectedSubject} messages={messages}
+              newMessage={newMessage} setNewMessage={setNewMessage}
+              sendMessage={sendMessage} isTyping={isTyping}
+              currentPlan={currentPlan} dailyChatUsage={dailyUsage.chat}
+              onGoPremium={goToPremium} onClearChat={handleClearChat}
+            />
+          )}
+          {activeTab === "tests" && (
+            <TestsTab
+              subjects={subjectsState} testSubjectFilter={testSubjectFilter}
+              setTestSubjectFilter={resetTestOnFilterChange}
+              currentQuestion={currentQuestionIndex !== null ? allTestQuestions[currentQuestionIndex] : null}
+              selectedAnswer={selectedAnswer} setSelectedAnswer={setSelectedAnswer}
+              showResult={showResult} handleAnswerSubmit={handleAnswerSubmit}
+              nextQuestion={nextQuestion} subjectScores={subjectScores}
+              totalScore={getTotalScore()} totalQuestions={getFilteredQuestions().length}
+              onOpenDocumentQuiz={() => openScreen("document-quiz", "Quiz document", () => setShowDocumentQuizUpload(true))}
+              onSavedQuizzes={openSavedQuizList} savedQuizCount={savedQuizzes.length}
+              currentPlan={currentPlan} dailyAnswersUsage={dailyUsage.answers}
+              dailyQuizzesUsage={dailyUsage.quizzes} onGoPremium={goToPremium}
+            />
+          )}
+          {activeTab === "rezumate" && (
+            <RezumateTab
+              uploadedFile={uploadedFile} setUploadedFile={setUploadedFile}
+              isGenerating={isGenerating} onGenerate={generateSummary}
+              generatedSummary={generatedSummary} setGeneratedSummary={setGeneratedSummary}
+              savedSummaries={savedSummaries} onSaveSummary={saveSummary}
+              onDeleteSummary={deleteSummary} showToastMessage={showToastMessage}
+              currentPlan={currentPlan} dailySummaryUsage={dailyUsage.summaries}
+              onGoPremium={goToPremium}
+            />
+          )}
+          {activeTab === "progress" && (
+            <ProgressTab
+              subjects={subjectsState} subjectScores={subjectScores}
+              onPracticeSubject={navigateToTests} showToastMessage={showToastMessage}
+              onResetProgress={() => setShowResetModal(true)}
+            />
+          )}
+          {activeTab === "premium" && <PremiumTab onPlanClick={handlePremiumClick} currentPlan={currentPlan} />}
+        </AppLayout>
+      )}
+
+      {/* Profile Screen — full-screen overlay */}
       {showProfileScreen && (
-        <ProfileScreen
-          userProfile={userProfile} setUserProfile={setUserProfile}
-          currentPlan={currentPlan} onBack={() => setShowProfileScreen(false)}
-          onUpgradeClick={() => { setShowProfileScreen(false); setActiveTab("premium"); }}
-          showToastMessage={showToastMessage}
-        />
+        <FullScreenOverlay>
+          <ProfileScreen
+            userProfile={userProfile} setUserProfile={setUserProfile}
+            currentPlan={currentPlan} onBack={() => { popScreen(); setShowProfileScreen(false); }}
+            onUpgradeClick={() => { popScreen(); setShowProfileScreen(false); setActiveTab("premium"); }}
+            showToastMessage={showToastMessage}
+          />
+        </FullScreenOverlay>
       )}
 
-      {/* Settings Screen */}
+      {/* Settings Screen — full-screen overlay */}
       {showSettingsScreen && (
-        <SettingsScreen
-          settings={settings} setSettings={setSettings}
-          onBack={() => setShowSettingsScreen(false)} showToastMessage={showToastMessage}
-          userBacProfile={userBacProfile}
-          activeSubjects={activeSubjects}
-          onBacProfileChange={(bacProfile, selectedSubjects) => {
-            setUserBacProfile(bacProfile);
-            setActiveSubjects(selectedSubjects);
-            // Save to localStorage
-            try { localStorage.setItem("bac_profile", bacProfile); } catch {}
-            try { localStorage.setItem("selected_subjects", JSON.stringify(selectedSubjects)); } catch {}
-            if (authUser) {
-              saveBacPreferences(authUser.id, bacProfile, selectedSubjects).catch(console.error);
-            }
-            // Update subjectsState from the FULL subjects list (not subjectsState which may already be filtered)
-            setSubjectsState(subjects.filter((s) => selectedSubjects.includes(s.name)));
-          }}
-          onResetBacProfile={() => {
-            setUserBacProfile(null);
-            setActiveSubjects(null);
-            setSubjectsState(subjects);
-            try { localStorage.removeItem("bac_profile"); } catch {}
-            try { localStorage.removeItem("selected_subjects"); } catch {}
-            if (authUser) {
-              saveBacPreferences(authUser.id, "", subjects.map((s) => s.name)).catch(console.error);
-            }
-          }}
-        />
+        <FullScreenOverlay>
+          <SettingsScreen
+            settings={settings} setSettings={setSettings}
+            onBack={() => { popScreen(); setShowSettingsScreen(false); }} showToastMessage={showToastMessage}
+            userBacProfile={userBacProfile}
+            activeSubjects={activeSubjects}
+            onBacProfileChange={(bacProfile, selectedSubjects) => {
+              setUserBacProfile(bacProfile);
+              setActiveSubjects(selectedSubjects);
+              try { localStorage.setItem("bac_profile", bacProfile); } catch {}
+              try { localStorage.setItem("selected_subjects", JSON.stringify(selectedSubjects)); } catch {}
+              if (authUser) {
+                saveBacPreferences(authUser.id, bacProfile, selectedSubjects).catch(console.error);
+              }
+              setSubjectsState(subjects.filter((s) => selectedSubjects.includes(s.name)));
+            }}
+            onResetBacProfile={() => {
+              setUserBacProfile(null);
+              setActiveSubjects(null);
+              setSubjectsState(subjects);
+              try { localStorage.removeItem("bac_profile"); } catch {}
+              try { localStorage.removeItem("selected_subjects"); } catch {}
+              if (authUser) {
+                saveBacPreferences(authUser.id, "", subjects.map((s) => s.name)).catch(console.error);
+              }
+            }}
+          />
+        </FullScreenOverlay>
       )}
 
+      {/* Notifications Screen */}
       {showNotificationsScreen && (
-        <NotificationsScreen notifications={notifications} setNotifications={setNotifications} onBack={() => setShowNotificationsScreen(false)} />
+        <FullScreenOverlay>
+          <NotificationsScreen notifications={notifications} setNotifications={setNotifications} onBack={() => { popScreen(); setShowNotificationsScreen(false); }} />
+        </FullScreenOverlay>
       )}
 
+      {/* Help Screen */}
       {showHelpScreen && (
-        <HelpScreen onBack={() => setShowHelpScreen(false)} showToastMessage={showToastMessage} />
+        <FullScreenOverlay>
+          <HelpScreen onBack={() => { popScreen(); setShowHelpScreen(false); }} showToastMessage={showToastMessage} />
+        </FullScreenOverlay>
       )}
 
       {/* Saved Quiz List Screen */}
       {showSavedQuizList && !generatedQuizQuestions.length && (
-        <div className="fixed inset-0 bg-[#08080D] z-[150] p-4">
-          <div className="h-full flex flex-col max-w-md sm:max-w-lg mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <button onClick={() => setShowSavedQuizList(false)} className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
-                <ArrowLeft className="w-5 h-5" />
-                <span className="font-medium">Inapoi</span>
-              </button>
-              <h1 className="text-lg font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>Teste salvate</h1>
-              <div className="w-20" />
-            </div>
+        <FullScreenOverlay>
+          <div className="h-full flex flex-col">
+            <PageHeader
+              title="Teste salvate"
+              onBack={() => { popScreen(); setShowSavedQuizList(false); }}
+            />
             {savedQuizzes.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center">
                 <FileText className="w-16 h-16 text-muted-foreground/40 mb-4" />
@@ -975,22 +1070,24 @@ export default function BACsmartApp() {
               </div>
             )}
           </div>
-        </div>
+        </FullScreenOverlay>
       )}
 
       {/* Document Quiz Upload Screen */}
       {showDocumentQuizUpload && !generatedQuizQuestions.length && (
-        <DocumentQuizUploadScreen
-          onBack={() => { setShowDocumentQuizUpload(false); setDocumentQuizFile(null); setIsGeneratingQuiz(false); }}
-          onFileSelected={generateDocumentQuiz} isGenerating={isGeneratingQuiz}
-          difficulty={docQuizDifficulty} setDifficulty={setDocQuizDifficulty}
-          onSavedQuizzes={openSavedQuizList} savedQuizCount={savedQuizzes.length}
-        />
+        <FullScreenOverlay>
+          <DocumentQuizUploadScreen
+            onBack={() => { popScreen(); setShowDocumentQuizUpload(false); setDocumentQuizFile(null); setIsGeneratingQuiz(false); }}
+            onFileSelected={generateDocumentQuiz} isGenerating={isGeneratingQuiz}
+            difficulty={docQuizDifficulty} setDifficulty={setDocQuizDifficulty}
+            onSavedQuizzes={openSavedQuizList} savedQuizCount={savedQuizzes.length}
+          />
+        </FullScreenOverlay>
       )}
 
       {/* Document Quiz Question Screen */}
       {generatedQuizQuestions.length > 0 && currentDocQuizIndex < generatedQuizQuestions.length && (
-        <div className="fixed inset-0 bg-[#08080D] z-[150] p-4">
+        <FullScreenOverlay>
           <div className="max-w-md sm:max-w-lg mx-auto flex items-center justify-center h-full">
             <DocumentQuizQuestionScreen
               question={generatedQuizQuestions[currentDocQuizIndex]} currentIndex={currentDocQuizIndex}
@@ -999,96 +1096,8 @@ export default function BACsmartApp() {
               onSubmit={submitDocQuizAnswer} onNext={nextDocQuizQuestion} score={docQuizScore}
             />
           </div>
-        </div>
+        </FullScreenOverlay>
       )}
-
-      {/* Mobile Phone Frame — responsive: phone 390px, tablet 7" ~600px, tablet 10" ~800px */}
-      <div className="relative w-full max-w-[390px] sm:max-w-[600px] md:max-w-[800px] bg-[#08080D] rounded-[32px] sm:rounded-[40px] md:rounded-[50px] border-[6px] sm:border-[7px] md:border-[8px] border-[#1A1A2E] shadow-2xl overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] sm:w-[140px] md:w-[150px] h-[28px] sm:h-[32px] md:h-[35px] bg-[#08080D] rounded-b-3xl z-50 hidden sm:block" />
-        <div className="h-full flex flex-col pt-8 sm:pt-9 md:pt-10">
-          <div className="flex-1 overflow-y-auto mobile-scrollbar px-3 sm:px-4 md:px-6 lg:px-8 pb-24">
-            {activeTab === "home" && (
-              <HomeTab
-                subjectsState={subjectsState} subjectScores={subjectScores}
-                userProfile={userProfile}
-                onSubjectClick={navigateToTests} onPremiumClick={() => setActiveTab("premium")}
-                showProfileMenu={showProfileMenu} setShowProfileMenu={setShowProfileMenu}
-                currentPlan={currentPlan}
-                onProfileClick={() => { setShowProfileMenu(false); setShowProfileScreen(true); }}
-                onSettingsClick={() => { setShowProfileMenu(false); setShowSettingsScreen(true); }}
-                onLogoutClick={() => { setShowProfileMenu(false); setShowLogoutModal(true); }}
-                onHelpClick={() => { setShowProfileMenu(false); setShowHelpScreen(true); }}
-                onNotificationsClick={() => { setShowProfileMenu(false); setShowNotificationsScreen(true); }}
-                dailyUsage={dailyUsage} streakDays={streakDays}
-              />
-            )}
-            {activeTab === "chat" && (
-              <ChatTab
-                subjects={subjectsState} selectedSubject={selectedSubject}
-                setSelectedSubject={setSelectedSubject} messages={messages}
-                newMessage={newMessage} setNewMessage={setNewMessage}
-                sendMessage={sendMessage} isTyping={isTyping}
-                currentPlan={currentPlan} dailyChatUsage={dailyUsage.chat}
-                onGoPremium={goToPremium} onClearChat={handleClearChat}
-              />
-            )}
-            {activeTab === "tests" && (
-              <TestsTab
-                subjects={subjectsState} testSubjectFilter={testSubjectFilter}
-                setTestSubjectFilter={resetTestOnFilterChange}
-                currentQuestion={currentQuestionIndex !== null ? allTestQuestions[currentQuestionIndex] : null}
-                selectedAnswer={selectedAnswer} setSelectedAnswer={setSelectedAnswer}
-                showResult={showResult} handleAnswerSubmit={handleAnswerSubmit}
-                nextQuestion={nextQuestion} subjectScores={subjectScores}
-                totalScore={getTotalScore()} totalQuestions={getFilteredQuestions().length}
-                onOpenDocumentQuiz={() => setShowDocumentQuizUpload(true)}
-                onSavedQuizzes={openSavedQuizList} savedQuizCount={savedQuizzes.length}
-                currentPlan={currentPlan} dailyAnswersUsage={dailyUsage.answers}
-                dailyQuizzesUsage={dailyUsage.quizzes} onGoPremium={goToPremium}
-              />
-            )}
-            {activeTab === "rezumate" && (
-              <RezumateTab
-                uploadedFile={uploadedFile} setUploadedFile={setUploadedFile}
-                isGenerating={isGenerating} onGenerate={generateSummary}
-                generatedSummary={generatedSummary} setGeneratedSummary={setGeneratedSummary}
-                savedSummaries={savedSummaries} onSaveSummary={saveSummary}
-                onDeleteSummary={deleteSummary} showToastMessage={showToastMessage}
-                currentPlan={currentPlan} dailySummaryUsage={dailyUsage.summaries}
-                onGoPremium={goToPremium}
-              />
-            )}
-            {activeTab === "progress" && (
-              <ProgressTab
-                subjects={subjectsState} subjectScores={subjectScores}
-                onPracticeSubject={navigateToTests} showToastMessage={showToastMessage}
-                onResetProgress={() => setShowResetModal(true)}
-              />
-            )}
-            {activeTab === "premium" && <PremiumTab onPlanClick={handlePremiumClick} currentPlan={currentPlan} />}
-          </div>
-
-          {/* Bottom Tab Navigation */}
-          <div className="absolute bottom-0 left-0 right-0 bg-[#0F0F1A] border-t border-[#2A2A40] px-1 py-2 sm:py-3 pb-6 sm:pb-8">
-            <div className="flex justify-around items-center">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex flex-col items-center gap-0.5 sm:gap-1 px-1 sm:px-2 md:px-3 py-1 rounded-xl transition-all ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                  >
-                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? "fill-primary/20" : ""}`} />
-                    <span className="text-[8px] sm:text-[9px] md:text-[10px] font-medium">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

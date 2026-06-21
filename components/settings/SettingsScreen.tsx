@@ -100,13 +100,12 @@ export default function SettingsScreen({
   };
 
   return (
-    <div className="fixed inset-0 bg-[#08080D] z-[150] animate-in slide-in-from-right duration-300">
-      <div className="h-full flex flex-col p-4 max-w-md sm:max-w-lg mx-auto overflow-y-auto">
-        {/* Header */}
-        <button onClick={onBack} className="flex items-center gap-2 text-foreground mb-6 hover:text-primary transition-colors">
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Inapoi</span>
-        </button>
+    <div className="h-full flex flex-col overflow-y-auto">
+      {/* Header */}
+      <button onClick={onBack} className="flex items-center gap-2 text-foreground mb-6 hover:text-primary transition-colors w-fit">
+        <ArrowLeft className="w-5 h-5" />
+        <span className="font-medium">Inapoi</span>
+      </button>
 
         <h1 className="text-2xl font-bold text-foreground mb-8" style={{ fontFamily: "var(--font-syne)" }}>
           Setari
@@ -230,7 +229,6 @@ export default function SettingsScreen({
             </div>
           </div>
         </div>
-      </div>
 
       {/* Delete Chat Confirmation */}
       {showDeleteChatConfirm && (

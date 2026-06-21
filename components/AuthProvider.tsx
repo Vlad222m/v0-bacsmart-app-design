@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useSessionPersistence } from '@/lib/use-session-persistence'
+import { useOAuthDeepLink } from '@/lib/use-oauth-deeplink'
 import type { User } from '@supabase/supabase-js'
 
 interface AuthContextType {
@@ -14,6 +16,12 @@ const AuthContext = createContext<AuthContextType>({ user: null, loading: true }
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Enable Capacitor session persistence (Android/iOS)
+  useSessionPersistence()
+
+  // Enable OAuth deep link handling on native (Android/iOS)
+  useOAuthDeepLink()
 
   useEffect(() => {
     if (!supabase) {

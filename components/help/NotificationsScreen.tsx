@@ -25,29 +25,28 @@ export default function NotificationsScreen({
   };
 
   return (
-    <div className="fixed inset-0 bg-[#08080D] z-[150] animate-in slide-in-from-right duration-300">
-      <div className="h-full flex flex-col p-4 max-w-md sm:max-w-lg mx-auto">
-        {/* Header */}
-        <button onClick={onBack} className="flex items-center gap-2 text-foreground mb-6 hover:text-primary transition-colors">
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Inapoi</span>
-        </button>
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <button onClick={onBack} className="flex items-center gap-2 text-foreground mb-6 hover:text-primary transition-colors w-fit">
+        <ArrowLeft className="w-5 h-5" />
+        <span className="font-medium">Inapoi</span>
+      </button>
 
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
-            Notificari
-          </h1>
-          {unreadCount > 0 && (
-            <span className="bg-primary text-primary-foreground px-2.5 py-0.5 rounded-full text-xs font-bold">{unreadCount}</span>
-          )}
-        </div>
-
-        {/* Mark All as Read Button */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
+          Notificari
+        </h1>
         {unreadCount > 0 && (
-          <button onClick={markAllAsRead} className="mb-4 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors">
-            Marcheaza toate ca citite
-          </button>
+          <span className="bg-primary text-primary-foreground px-2.5 py-0.5 rounded-full text-xs font-bold">{unreadCount}</span>
         )}
+      </div>
+
+      {/* Mark All as Read Button */}
+      {unreadCount > 0 && (
+        <button onClick={markAllAsRead} className="mb-4 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors">
+          Marcheaza toate ca citite
+        </button>
+      )}
 
         {/* Notifications List */}
         <div className="flex-1 overflow-y-auto space-y-2">
@@ -78,6 +77,5 @@ export default function NotificationsScreen({
           )}
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

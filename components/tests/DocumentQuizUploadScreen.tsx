@@ -61,13 +61,12 @@ export default function DocumentQuizUploadScreen({
   };
 
   return (
-    <div className="fixed inset-0 bg-[#08080D] z-[150] animate-in slide-in-from-right duration-300">
-      <div className="h-full flex flex-col p-4 max-w-md sm:max-w-lg mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={onBack} className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Inapoi</span>
-          </button>
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={onBack} className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+          <span className="font-medium">Inapoi</span>
+        </button>
           {onSavedQuizzes && savedQuizCount > 0 && (
             <button onClick={onSavedQuizzes} className="flex items-center gap-1.5 text-xs bg-card border border-border px-3 py-1.5 rounded-full text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all">
               <Clock className="w-3.5 h-3.5" />
@@ -159,6 +158,5 @@ export default function DocumentQuizUploadScreen({
           </div>
         )}
       </div>
-    </div>
-  );
-}
+    );
+  }

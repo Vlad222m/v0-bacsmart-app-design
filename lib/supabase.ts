@@ -92,6 +92,7 @@ export interface SavedQuiz {
   score: number
   total: number
   created_at: string
+  fileName?: string // local usage, mapped to file_name for DB
 }
 
 // Auth helpers
@@ -113,21 +114,67 @@ export const signInWithEmail = async (email: string, password: string) => {
   return data
 }
 
+// Detectăm mediul: Capacitor (native) vs browser web
+function isNativePlatform(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return !!(window as any).Capacitor?.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+// Obține URL-ul corect de redirect pentru OAuth în funcție de platformă
+function getOAuthRedirectUrl(): string {
+  // Pe web: folosește origin-ul curent
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
+  }
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/auth/callback`;
+  }
+  return 'https://v0-bacsmart-app-design.vercel.app/auth/callback';
+}
+
 export const signInWithGoogle = async () => {
   if (!supabase) throw new Error("Supabase not configured")
+
+  const redirectTo = getOAuthRedirectUrl();
+  const isNative = isNativePlatform();
+
+  console.log(`[OAuth] signInWithGoogle: isNative=${isNative}, redirectTo=${redirectTo}`);
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: process.env.NEXT_PUBLIC_SITE_URL
-        ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
-        : (typeof window !== 'undefined'
-          ? `${window.location.origin}/auth/callback`
-          : 'https://v0-bacsmart-app-design.vercel.app/auth/callback')
+      redirectTo,
+    },
+  });
+  if (error) throw error;
+
+  // data.url = URL-ul Google OAuth (consent screen)
+  if (data?.url && typeof window !== 'undefined') {
+    if (isNative) {
+      // Pe Capacitor: deschide URL-ul într-un Custom Tab (browser in-app)
+      // @capacitor/browser deschide un Chrome Custom Tab pe Android,
+      // care se închide automat după ce URL-ul de redirect e interceptat
+      try {
+        const { Browser } = await import('@capacitor/browser');
+        await Browser.open({ url: data.url });
+        // Notă: @capacitor/browser ascultă evenimentul 'browserFinished'
+        // și acolo putem verifica dacă OAuth s-a completat
+      } catch (e) {
+        console.warn('[OAuth] @capacitor/browser not available, fallback to window.open', e);
+        window.open(data.url, '_blank');
+      }
+    } else {
+      // Web: redirect normal (pagina se reîncarcă)
+      window.location.href = data.url;
     }
-  })
-  if (error) throw error
-  return data
-}
+  }
+
+  return data;
+};
 
 export const signOut = async () => {
   if (!supabase) throw new Error("Supabase not configured")
