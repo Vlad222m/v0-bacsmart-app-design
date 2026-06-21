@@ -39,8 +39,12 @@ export default function GoogleOAuthModal({ onStartOAuth, onClose }: GoogleOAuthM
             <X className="w-5 h-5" />
           </button>
 
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-3 shadow-lg">
-            <span className="text-2xl font-bold text-white">B</span>
+          <div className="w-16 h-16 mx-auto mb-3">
+            <img
+              src="/logo-login.png"
+              alt="BACsmart"
+              className="w-full h-full object-contain"
+            />
           </div>
           <h2
             className="text-xl font-bold text-foreground"

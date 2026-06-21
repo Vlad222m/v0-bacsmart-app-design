@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Loader, Eye, EyeOff, AlertTriangle, RefreshCw } from "lucide-react";
 import { signUpWithEmail, signInWithEmail, signInWithGoogle } from "@/lib/supabase";
 import BacProfileQuiz from "./BacProfileQuiz";
-import GoogleOAuthModal from "./GoogleOAuthModal";
 
 interface AuthScreenProps {
   onAuthSuccess: () => void;
@@ -21,21 +20,6 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showBacQuiz, setShowBacQuiz] = useState(false);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [oauthTimeout, setOauthTimeout] = useState(false);
-  const oauthTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const clearOAuthTimer = useCallback(() => {
-    if (oauthTimerRef.current) {
-      clearTimeout(oauthTimerRef.current);
-      oauthTimerRef.current = null;
-    }
-  }, []);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => clearOAuthTimer();
-  }, [clearOAuthTimer]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,23 +58,12 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
 
   const handleGoogleAuth = async () => {
     setError("");
-    setOauthTimeout(false);
     setIsLoading(true);
-
-    // Timeout de 60 secunde — dacă nu se întoarce din OAuth, arătăm fallback
-    clearOAuthTimer();
-    oauthTimerRef.current = setTimeout(() => {
-      setOauthTimeout(true);
-      setIsLoading(false);
-      setError("Autentificarea Google nu s-a finalizat. Verifică conexiunea și încearcă din nou.");
-    }, 60000);
 
     try {
       await signInWithGoogle();
-      // Pe web, signInWithGoogle face redirect — nu ajungem aici.
-      clearOAuthTimer();
+      // Pe web face redirect — nu ajungem aici
     } catch (err: any) {
-      clearOAuthTimer();
       console.error("Google auth error:", err);
       setError("Eroare la autentificarea cu Google");
       setIsLoading(false);
@@ -110,8 +83,12 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
       <div className="w-full max-w-sm sm:max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl font-bold text-white">B</span>
+          <div className="w-20 h-20 mx-auto mb-4">
+            <img
+              src="/logo-login.png"
+              alt="BACsmart"
+              className="w-full h-full object-contain"
+            />
           </div>
           <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "var(--font-syne)" }}>
             BACsmart
@@ -207,9 +184,9 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          {/* Google Auth */}
+          {/* Google Auth — redirect direct, fara pop-up */}
           <button
-            onClick={() => setShowGoogleModal(true)}
+            onClick={handleGoogleAuth}
             disabled={isLoading}
             className="w-full bg-white text-gray-800 py-3 rounded-xl font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-3"
           >
@@ -228,32 +205,6 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
             )}
           </button>
 
-          {/* OAuth fallback UI — apare dacă Google OAuth nu se întoarce în 60s */}
-          {oauthTimeout && (
-            <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground mb-1">Autentificarea durează mai mult decât de obicei</p>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Asigură-te că:
-                  </p>
-                  <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside mb-3">
-                    <li>Ai conexiune stabilă la internet</li>
-                    <li>Ai acceptat permisiunile în browser după autentificare</li>
-                    <li>Dacă ai rămas în browser, întoarce-te manual în aplicație</li>
-                  </ul>
-                  <button
-                    onClick={handleGoogleAuth}
-                    className="w-full py-2 rounded-lg text-xs font-medium bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" /> Încearcă din nou
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Toggle Mode */}
           <p className="text-center text-muted-foreground text-sm mt-6">
             {mode === "login" ? "Nu ai cont?" : "Ai deja cont?"}{" "}
@@ -266,19 +217,6 @@ export default function AuthScreen({ onAuthSuccess, showToastMessage, onBacProfi
           </p>
         </div>
       </div>
-
-      {/* Google OAuth Modal — arată branding BACsmart înainte de Chrome Custom Tab */}
-      {showGoogleModal && (
-        <GoogleOAuthModal
-          onStartOAuth={handleGoogleAuth}
-          onClose={() => {
-            setShowGoogleModal(false);
-            setIsLoading(false);
-            clearOAuthTimer();
-            setOauthTimeout(false);
-          }}
-        />
-      )}
 
       {/* BAC Profile Quiz after signup */}
       {showBacQuiz && <BacProfileQuiz onComplete={handleBacComplete} />}
