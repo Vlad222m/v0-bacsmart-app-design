@@ -28,6 +28,28 @@ const FREE_LIMITS = {
 type UsageField = "chat_count" | "answer_count" | "summary_count" | "quiz_count";
 
 /**
+ * Client Supabase pentru codul de server. Rutele API și webhook-ul nu au sesiune de
+ * utilizator, deci cu cheia anon RLS blochează tot: `auth.uid()` e NULL, UPDATE-ul
+ * atinge 0 rânduri și întoarce succes fără să scrie nimic. Cu cheia service_role
+ * (BYPASSRLS) citirile și scrierile ajung efectiv în bază. Cheia rămâne pe server.
+ */
+let warnedMissingServiceRole = false;
+function serverDbClient(url: string, anonKey: string) {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey && !warnedMissingServiceRole) {
+    warnedMissingServiceRole = true;
+    console.warn(
+      "[Auth] SUPABASE_SERVICE_ROLE_KEY is not set — server-side plan reads/writes " +
+        "will be blocked by RLS and fall back to RevenueCat."
+    );
+  }
+  return createServerClient(url, serviceRoleKey || anonKey, {
+    cookies: { getAll: () => [], setAll: () => {} },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+/**
  * Get user's current plan from Supabase
  */
 async function getUserPlan(supabase: ReturnType<typeof createServerClient>, userId: string): Promise<{ plan: string; trialEndsAt: string | null; premiumUntil: string | null; ok: boolean }> {
@@ -96,15 +118,14 @@ async function getRevenueCatActive(userId: string): Promise<boolean> {
 
 /**
  * Decide whether a user counts as premium (paid or in trial).
- * Supabase first; RevenueCat is consulted only when the mirrored plan cannot be
- * trusted, so o dată ce schema + service_role sunt la locul lor nu mai facem
- * niciun request suplimentar.
+ * Supabase first (fast path). A negative answer is always confirmed against
+ * RevenueCat, the source of truth, because the mirror can lag behind reality.
  */
 async function resolvePlan(
   supabase: ReturnType<typeof createServerClient>,
   userId: string
 ): Promise<{ premium: boolean; expired: boolean }> {
-  const { plan, trialEndsAt, premiumUntil, ok } = await getUserPlan(supabase, userId);
+  const { plan, trialEndsAt, premiumUntil } = await getUserPlan(supabase, userId);
 
   const isPaid = plan === "premium" || plan === "annual";
   const expired = !!(isPaid && premiumUntil && new Date(premiumUntil) < new Date());
@@ -112,8 +133,7 @@ async function resolvePlan(
 
   if ((isPaid && !expired) || inTrial) return { premium: true, expired: false };
 
-  const mirrorIsReliable = ok && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!mirrorIsReliable && (await getRevenueCatActive(userId))) {
+  if (await getRevenueCatActive(userId)) {
     return { premium: true, expired: false };
   }
 
@@ -144,10 +164,7 @@ export async function requirePremium(req: Request): Promise<{ userId: string } |
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: { getAll: () => [], setAll: () => {} },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const supabase = serverDbClient(supabaseUrl, supabaseAnonKey);
 
   const { premium, expired } = await resolvePlan(supabase, auth.userId);
 
@@ -184,10 +201,7 @@ export async function checkFreeLimit(
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: { getAll: () => [], setAll: () => {} },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const supabase = serverDbClient(supabaseUrl, supabaseAnonKey);
 
   const { premium } = await resolvePlan(supabase, auth.userId);
 
@@ -238,10 +252,7 @@ export async function incrementUsage(userId: string, feature: "chat" | "answers"
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnonKey) return;
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: { getAll: () => [], setAll: () => {} },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const supabase = serverDbClient(supabaseUrl, supabaseAnonKey);
 
   const field = fieldMap[feature];
   const today = new Date().toISOString().split("T")[0];
