@@ -30,18 +30,94 @@ type UsageField = "chat_count" | "answer_count" | "summary_count" | "quiz_count"
 /**
  * Get user's current plan from Supabase
  */
-async function getUserPlan(supabase: ReturnType<typeof createServerClient>, userId: string): Promise<{ plan: string; trialEndsAt: string | null; premiumUntil: string | null }> {
-  const { data } = await supabase
+async function getUserPlan(supabase: ReturnType<typeof createServerClient>, userId: string): Promise<{ plan: string; trialEndsAt: string | null; premiumUntil: string | null; ok: boolean }> {
+  const { data, error } = await supabase
     .from("profiles")
     .select("current_plan, trial_ends_at, premium_until")
     .eq("id", userId)
     .single();
 
+  if (error) {
+    // Nu înghiți eroarea: dacă schema nu corespunde, TOȚI utilizatorii (și cei
+    // care au plătit) sunt tratați drept gratuit, fără ca nimeni să afle.
+    console.error(`[Auth] Could not read plan for ${userId}:`, error.message);
+  }
+
   return {
     plan: data?.current_plan || "free",
     trialEndsAt: data?.trial_ends_at || null,
     premiumUntil: data?.premium_until || null,
+    ok: !error,
   };
+}
+
+// profiles.current_plan e doar o oglindă a RevenueCat, scrisă de webhook. Ca să
+// fie de încredere are nevoie de ambele: coloanele premium_until/trial_ends_at în
+// schema live ȘI cheia service_role în env — altfel RLS aruncă update-ul în tăcere.
+// Când oglinda nu e de încredere, întrebăm direct RevenueCat (sursa de adevăr).
+const RC_SECRET_KEY = process.env.REVENUECAT_SECRET_API_KEY;
+const RC_CACHE_TTL_MS = 10 * 60 * 1000;
+const rcEntitlementCache = new Map<string, { active: boolean; at: number }>();
+
+async function getRevenueCatActive(userId: string): Promise<boolean> {
+  if (!RC_SECRET_KEY) return false;
+
+  const cached = rcEntitlementCache.get(userId);
+  if (cached && Date.now() - cached.at < RC_CACHE_TTL_MS) return cached.active;
+
+  try {
+    const res = await fetch(
+      `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(userId)}`,
+      {
+        headers: { Authorization: `Bearer ${RC_SECRET_KEY}` },
+        signal: AbortSignal.timeout(2500),
+        cache: "no-store",
+      }
+    );
+    // Nu cache-am eșecurile — un 500/401 temporar nu trebuie să retrogradeze
+    // pe nimeni pentru următoarele 10 minute.
+    if (!res.ok) return false;
+
+    const json = await res.json();
+    const entitlements = json?.subscriber?.entitlements ?? {};
+    const active = Object.values(entitlements).some((e) => {
+      const ent = e as { expires_date?: string | null } | null;
+      if (!ent) return false;
+      return !ent.expires_date || new Date(ent.expires_date).getTime() > Date.now();
+    });
+
+    rcEntitlementCache.set(userId, { active, at: Date.now() });
+    return active;
+  } catch (error) {
+    console.error(`[Auth] RevenueCat lookup failed for ${userId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Decide whether a user counts as premium (paid or in trial).
+ * Supabase first; RevenueCat is consulted only when the mirrored plan cannot be
+ * trusted, so o dată ce schema + service_role sunt la locul lor nu mai facem
+ * niciun request suplimentar.
+ */
+async function resolvePlan(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string
+): Promise<{ premium: boolean; expired: boolean }> {
+  const { plan, trialEndsAt, premiumUntil, ok } = await getUserPlan(supabase, userId);
+
+  const isPaid = plan === "premium" || plan === "annual";
+  const expired = !!(isPaid && premiumUntil && new Date(premiumUntil) < new Date());
+  const inTrial = !!(trialEndsAt && new Date(trialEndsAt) > new Date());
+
+  if ((isPaid && !expired) || inTrial) return { premium: true, expired: false };
+
+  const mirrorIsReliable = ok && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!mirrorIsReliable && (await getRevenueCatActive(userId))) {
+    return { premium: true, expired: false };
+  }
+
+  return { premium: false, expired };
 }
 
 /**
@@ -73,24 +149,20 @@ export async function requirePremium(req: Request): Promise<{ userId: string } |
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { plan, trialEndsAt, premiumUntil } = await getUserPlan(supabase, auth.userId);
+  const { premium, expired } = await resolvePlan(supabase, auth.userId);
 
-  // Check if premium or within trial
-  const isPremium = plan === "premium" || plan === "annual";
-  const inTrial = trialEndsAt ? new Date(trialEndsAt) > new Date() : false;
+  if (!premium) {
+    // Subscription scadentă — oglinda rămâne pe plan plătit până o curățăm.
+    if (expired) {
+      await supabase.from("profiles").update({ current_plan: "free", premium_until: null }).eq("id", auth.userId);
+      return NextResponse.json(
+        { error: "Subscription has expired. Renew for continued access.", code: "subscription_expired" },
+        { status: 402 }
+      );
+    }
 
-  if (!isPremium && !inTrial) {
     return NextResponse.json(
       { error: "Premium subscription required. Upgrade for unlimited access.", code: "premium_required" },
-      { status: 402 }
-    );
-  }
-
-  // Check if subscription expired
-  if (isPremium && premiumUntil && new Date(premiumUntil) < new Date()) {
-    await supabase.from("profiles").update({ current_plan: "free", premium_until: null }).eq("id", auth.userId);
-    return NextResponse.json(
-      { error: "Subscription has expired. Renew for continued access.", code: "subscription_expired" },
       { status: 402 }
     );
   }
@@ -117,12 +189,10 @@ export async function checkFreeLimit(
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { plan, trialEndsAt } = await getUserPlan(supabase, auth.userId);
+  const { premium } = await resolvePlan(supabase, auth.userId);
 
   // Premium users or users in trial have no limits
-  const isPremium = plan === "premium" || plan === "annual";
-  const inTrial = trialEndsAt ? new Date(trialEndsAt) > new Date() : false;
-  if (isPremium || inTrial) {
+  if (premium) {
     return { userId: auth.userId };
   }
 
