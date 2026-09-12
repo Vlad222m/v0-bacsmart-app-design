@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       case "RENEWAL":
       case "PRODUCT_CHANGE": {
         // Determine plan type and trial end
-        const isAnnual = productId.includes("annual");
+        const isAnnual = productId.includes("annual") || productId.includes("anual");
         const plan = isAnnual ? "annual" : "premium";
         const trialEndsAt = isTrial
           ? (expiresAtMs ? new Date(expiresAtMs).toISOString() : null)
