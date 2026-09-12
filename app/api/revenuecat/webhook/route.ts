@@ -72,12 +72,23 @@ export async function POST(req: Request) {
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseAnonKey) {
+    // Webhook-ul scrie fără sesiune de utilizator, deci RLS-ul blochează silent
+    // update-ul dacă folosim cheia anon. Cheia service_role ocolește RLS-ul și e
+    // obligatorie în producție; anon rămâne doar ca fallback pentru development.
+    const supabaseKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
     }
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.warn(
+        "[RevenueCat] SUPABASE_SERVICE_ROLE_KEY is not set — falling back to the " +
+        "anon key. Row Level Security will silently discard profile updates."
+      );
+    }
 
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: { getAll: () => [], setAll: () => {} },
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -98,7 +109,7 @@ export async function POST(req: Request) {
           ? (expiresAtMs ? new Date(expiresAtMs).toISOString() : null)
           : null;
 
-        await supabase
+        const { error: upgradeError } = await supabase
           .from("profiles")
           .update({
             current_plan: plan,
@@ -106,6 +117,19 @@ export async function POST(req: Request) {
             trial_ends_at: trialEndsAt,
           })
           .eq("id", appUserId);
+
+        if (upgradeError) {
+          // Nu raporta succes dacă scrierea a eșuat — altfel un client care a
+          // plătit rămâne pe planul gratuit fără ca nimeni să afle.
+          console.error(
+            `[RevenueCat] Failed to upgrade ${appUserId} to ${plan}:`,
+            upgradeError.message
+          );
+          return NextResponse.json(
+            { error: "Failed to persist entitlement", detail: upgradeError.message },
+            { status: 500 }
+          );
+        }
 
         console.log(`[RevenueCat] User ${appUserId} upgraded to ${plan}${isTrial ? " (trial)" : ""} until ${premiumUntil}`);
         break;
@@ -120,13 +144,24 @@ export async function POST(req: Request) {
       case "EXPIRATION":
       case "BILLING_ISSUE": {
         // Downgrade to free, keep trial info
-        await supabase
+        const { error: downgradeError } = await supabase
           .from("profiles")
           .update({
             current_plan: "free",
             premium_until: null,
           })
           .eq("id", appUserId);
+
+        if (downgradeError) {
+          console.error(
+            `[RevenueCat] Failed to downgrade ${appUserId}:`,
+            downgradeError.message
+          );
+          return NextResponse.json(
+            { error: "Failed to persist entitlement", detail: downgradeError.message },
+            { status: 500 }
+          );
+        }
 
         console.log(`[RevenueCat] User ${appUserId} expired/billing issue — downgraded to free`);
         break;
