@@ -8,23 +8,47 @@ export async function POST(req: Request) {
   try {
     // Verify webhook signature
     const body = await req.text();
-    const signature = req.headers.get("X-RevenueCat-Signature") || "";
+    // RevenueCat can authenticate a delivery two ways; accept either.
+    //  - the Authorization header configured on the webhook
+    //  - an HMAC of the raw body (X-RevenueCat-Webhook-Signature, or the
+    //    legacy X-RevenueCat-Signature) keyed with the same secret
+    const authHeader = req.headers.get("Authorization") || "";
 
     if (WEBHOOK_SECRET) {
-      // Basic verification — RevenueCat sends HMAC-SHA1 of the request body
-      const encoder = new TextEncoder();
-      const key = await crypto.subtle.importKey(
-        "raw", encoder.encode(WEBHOOK_SECRET),
-        { name: "HMAC", hash: "SHA-1" },
-        false, ["verify"]
-      );
-      const expectedSig = Array.from(
-        new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(body)))
-      ).map(b => b.toString(16).padStart(2, "0")).join("");
+      let verified = authHeader === WEBHOOK_SECRET;
 
-      if (signature !== expectedSig) {
-        console.error("[RevenueCat] Invalid webhook signature");
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      const signature =
+        req.headers.get("X-RevenueCat-Webhook-Signature") ||
+        req.headers.get("X-RevenueCat-Signature") ||
+        "";
+
+      if (!verified && signature) {
+        const encoder = new TextEncoder();
+        const hex = (bytes: Uint8Array) =>
+          Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+        const b64 = (bytes: Uint8Array) =>
+          btoa(String.fromCharCode(...bytes));
+
+        for (const hash of ["SHA-256", "SHA-1"] as const) {
+          const key = await crypto.subtle.importKey(
+            "raw", encoder.encode(WEBHOOK_SECRET),
+            { name: "HMAC", hash },
+            false, ["sign"]
+          );
+          const mac = new Uint8Array(
+            await crypto.subtle.sign("HMAC", key, encoder.encode(body))
+          );
+          // RevenueCat sends base64 by default; hex accepted for convenience.
+          if (signature === b64(mac) || signature === hex(mac)) {
+            verified = true;
+            break;
+          }
+        }
+      }
+
+      if (!verified) {
+        console.error("[RevenueCat] Webhook rejected — no valid credential");
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     }
 
